@@ -51,7 +51,7 @@ from pal.products.qcar import QCar, QCarCameras, QCarLidar
 # Version of THIS file. It is printed every time the script starts, so you can
 # always tell which version is running on the car. Change it with every edit and
 # write the change in CHANGELOG.md (see the "Versions" section of the README).
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 # =============================================================================
 # SETTINGS  (the numbers you will most likely want to change are at the top)
@@ -109,7 +109,10 @@ D_GO = 0.40         # Start again only when the road is clear farther than this 
 MIN_RANGE = 0.15    # Ignore LiDAR points closer than this (that is the car body).
 
 # ---- Other -------------------------------------------------------------------
-RUN_TIME = 300      # The program stops by itself after this many seconds.
+RUN_TIME = 60       # SAFETY: the program stops by itself after this many seconds.
+                    # Keep it short while testing: if the Wi-Fi drops you cannot press
+                    # Ctrl+C anymore, and this timer is what stops the car.
+                    # Change it for one run with:  --time 120
 RATE_HZ = 200       # How often the QCar interface runs.
 PRINT_HZ = 5        # How many status lines per second are printed on screen.
 SAVE_EVERY = 10     # Save one debug picture every N camera frames.
@@ -392,17 +395,23 @@ def camera_test():
 # =============================================================================
 # MAIN DRIVING LOOP
 # =============================================================================
-def drive(use_lidar, dry_run):
+def drive(use_lidar, dry_run, run_time=RUN_TIME):
     """Drive using the camera. Runs until Ctrl+C or RUN_TIME seconds.
 
     use_lidar - also stop for obstacles seen by the LiDAR.
     dry_run   - do everything EXCEPT turn the motor (throttle is forced to 0).
+    run_time  - stop by itself after this many seconds.
     """
     os.makedirs(DEBUG_DIR, exist_ok=True)
 
     # Ctrl+C sets this flag so the loop can end cleanly and stop the motor.
     quit_flag = threading.Event()
-    signal.signal(signal.SIGINT, lambda *_: quit_flag.set())
+    # Ctrl+C (SIGINT) is the normal way to stop. We ALSO catch SIGTERM and SIGHUP.
+    # SIGHUP is what Linux sends when your SSH connection closes (VS Code closed,
+    # laptop asleep, Wi-Fi lost). Without this the program would be killed instantly
+    # and would never send the "throttle = 0" command that stops the car.
+    for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+        signal.signal(sig, lambda *_: quit_flag.set())
 
     detector = LaneDetector()
     cameras = open_camera()
@@ -435,7 +444,7 @@ def drive(use_lidar, dry_run):
     print("DRY RUN: motor is OFF." if dry_run else "Driving. Press Ctrl+C to stop.")
     try:
         with qcar:
-            while not quit_flag.is_set() and time.time() - t_start < RUN_TIME:
+            while not quit_flag.is_set() and time.time() - t_start < run_time:
                 now = time.time()
                 dt = min(max(now - t_prev, 1e-3), 0.05)   # Time since last loop (seconds).
                 t_prev = now
@@ -573,6 +582,8 @@ if __name__ == "__main__":
                         help="drive and stop when the LiDAR sees something ahead")
     parser.add_argument("--dry", action="store_true",
                         help="run everything but keep the motor OFF")
+    parser.add_argument("--time", type=int, default=RUN_TIME,
+                        help=f"stop by itself after this many seconds (default {RUN_TIME})")
     args = parser.parse_args()
 
     print(f"lane_follow.py version {VERSION}")   # Which file is really running on the car?
@@ -582,4 +593,4 @@ if __name__ == "__main__":
     elif args.camtest:
         camera_test()
     else:
-        drive(args.lidar, args.dry)
+        drive(args.lidar, args.dry, args.time)

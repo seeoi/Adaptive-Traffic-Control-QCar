@@ -9,6 +9,13 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 1.0.1 - 2026-10-21
+- Safety: the program now also stops the motor cleanly when the SSH connection closes
+  (SIGHUP) or it is terminated (SIGTERM). Before, only Ctrl+C did that.
+- Safety: default run time lowered from 300 s to 60 s, and new `--time SECONDS` option.
+  If the Wi-Fi drops you cannot press Ctrl+C, so this timer is what stops the car.
+- Status: simulated tests only. NOT yet tested on a real QCar.
+
 ## 1.0.0 - 2026-10-21
 - First clean version, based on the old `TestGimmik4.py`.
 - Throttle can never be negative (fixes the fast forward/backward jerking).
