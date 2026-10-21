@@ -54,6 +54,19 @@ To download debug pictures to the laptop: `scp -r nvidia@192.168.2.183:~/debug .
   Recalibrate if the mat or furniture moves.
 * The previous team's code (Raspberry Pi + Flask + V2I) is **not in this repo yet**. Add it in its own folder.
 
+## Versions (how we keep the code in order)
+
+* **One source of truth:** the `main` branch on GitHub. Edit on the laptop, never directly on the car.
+* **Before you start:** `git pull`.
+* **Every change:** update `VERSION` in `src/lane_follow.py`, add a line to `CHANGELOG.md`, then
+  `git add -A`, `git commit -m "what changed and why"`, `git push`.
+* **Put it on the car:** `scp src/lane_follow.py nvidia@192.168.2.183:~/`. The script prints
+  `lane_follow.py version X.Y.Z` when it starts - check it matches the changelog.
+* **After a real test on the car:** write the result in `CHANGELOG.md` (worked / what failed).
+* **Milestones get a tag:** `git tag v1.1.0` then `git push --tags`
+  (for example, when the car completes the full track).
+* **Never** edit a file with nano on the car: that change never reaches GitHub.
+
 ## Roadmap
 
 - [ ] One QCar completes the full track with the camera only

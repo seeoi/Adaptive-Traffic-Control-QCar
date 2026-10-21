@@ -48,6 +48,11 @@ import numpy as np
 
 from pal.products.qcar import QCar, QCarCameras, QCarLidar
 
+# Version of THIS file. It is printed every time the script starts, so you can
+# always tell which version is running on the car. Change it with every edit and
+# write the change in CHANGELOG.md (see the "Versions" section of the README).
+VERSION = "1.0.0"
+
 # =============================================================================
 # SETTINGS  (the numbers you will most likely want to change are at the top)
 # =============================================================================
@@ -569,6 +574,8 @@ if __name__ == "__main__":
     parser.add_argument("--dry", action="store_true",
                         help="run everything but keep the motor OFF")
     args = parser.parse_args()
+
+    print(f"lane_follow.py version {VERSION}")   # Which file is really running on the car?
 
     if args.lidartest:
         lidar_test()
