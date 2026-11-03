@@ -9,6 +9,13 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 1.1.5 - 2026-11-02
+- Our mat has NO white stop lines at the intersection. New default route trigger `ROUTE_TRIGGER = "yellow_end"`:
+  when the yellow line was seen well and then disappears for 0.3 s, the car starts the next maneuver of the route.
+  After a maneuver it ignores new triggers for 6 s. (`"stop_line"` is still available.)
+- The car no longer waits for the (fake) green light before a route maneuver.
+- Status: only simulated.
+
 ## 1.1.4 - 2026-11-02
 - Real test of `--route R` (car 7): the car followed the curve, the yellow line ended (`yellow=0/5`) and the
   car NEVER reported `Stop line seen`, so it never started the right turn. Cause: the stop-line check needs the

@@ -54,7 +54,7 @@ from pal.products.qcar import QCar, QCarCameras, QCarLidar
 # Version of THIS file. It is printed every time the script starts, so you can
 # always tell which version is running on the car. Change it with every edit and
 # write the change in CHANGELOG.md (see the "Versions" section of the README).
-VERSION = "1.1.4"
+VERSION = "1.1.5"
 
 # =============================================================================
 # SETTINGS  (the numbers you will most likely want to change are at the top)
@@ -118,6 +118,12 @@ STOP_IGNORE_S = 3.0     # After leaving a stop line, ignore stop lines for this 
 #   S    = go straight          L = turn left          R = turn right
 #   RB1, RB2, RB3 = roundabout: take the 1st, 2nd or 3rd exit
 # Example:  --route S,L,RB2
+ROUTE_TRIGGER = "yellow_end"  # What tells the car "an intersection starts here":
+                        #   "yellow_end" = the yellow line ENDS (no white stop lines on our mat).
+                        #   "stop_line"  = a white stop line (needs the line to exist).
+END_LOST_S = 0.3        # yellow_end: the yellow line must be gone for this long (seconds)...
+END_SEEN_S = 2.0        # ...after being seen well (3+ of 5 rows) no more than this many seconds ago.
+END_COOLDOWN_S = 6.0    # After a maneuver, ignore new triggers for this long (a curve can hide the line too).
 V_MANEUVER = 0.20       # Speed during a maneuver (m/s). Slow = more repeatable.
 MIN_STOP_S = 1.0        # Wait at least this long at a stop line, even if the light is green.
 ARC_MIN_FRACTION = 0.5  # In a turn, the camera may take over once this fraction of the angle is done...
@@ -477,7 +483,8 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
                                    # (+1 s of extra time at the start: the first picture can be slow.)
     camera_warned = False          # True after we printed the "camera stopped" warning.
     ignore_stop_until = 0.0
-    use_stops = USE_STOP_LINES or bool(route)   # A route needs the stop lines to know where to act.
+    use_stops = USE_STOP_LINES or (bool(route) and ROUTE_TRIGGER == "stop_line")
+    yellow_lost_since = None   # When the camera stopped seeing ANY yellow (None = it sees some).
     route_index = 0            # Which decision of the route comes next.
     stop_start = 0.0           # When the car started waiting at a stop line.
     gyro_bias = 0.0            # Gyroscope reading when standing still (rad/s). Subtracted.
@@ -542,6 +549,23 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
                     lane_error, stop_seen, yellow_rows = detector.update(image)
                     if yellow_rows >= 3:
                         last_yellow_ok = now
+                    if yellow_rows == 0:
+                        if yellow_lost_since is None:
+                            yellow_lost_since = now
+                    else:
+                        yellow_lost_since = None
+                    # Route trigger: the yellow line was there and has just ended -> intersection.
+                    if (route and ROUTE_TRIGGER == "yellow_end" and state == "DRIVE"
+                            and now > ignore_stop_until and yellow_lost_since is not None
+                            and now - yellow_lost_since >= END_LOST_S
+                            and now - last_yellow_ok <= END_SEEN_S):
+                        man_name = route[route_index % len(route)]
+                        route_index += 1
+                        man_steps, man_i = MANEUVERS[man_name], 0
+                        man_dist = man_turn = man_total_dist = man_total_turn = 0.0
+                        man_start = now
+                        state = "MANEUVER"
+                        print(f"Yellow line ended - maneuver {man_name}")
                     if yellow_rows >= HANDOVER_ROWS:
                         if yellow_good_since is None:
                             yellow_good_since = now
@@ -616,7 +640,7 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
                         detector.yellow_x = [None] * len(SCAN_ROWS)
                         error_filtered = None
                         last_lane_time = now
-                        ignore_stop_until = now + STOP_IGNORE_S
+                        ignore_stop_until = now + max(STOP_IGNORE_S, END_COOLDOWN_S if route else 0.0)
                         state = "DRIVE"
 
                 if turntest_end is not None and now > turntest_end:

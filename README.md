@@ -42,8 +42,8 @@ To download debug pictures to the laptop: `scp -r nvidia@192.168.2.183:~/debug .
 
 ## Full track: route and maneuvers (v1.1.0, needs calibration)
 
-`python3 lane_follow.py --route S,L,R,RB2` - at every stop line the car stops, waits for green, does the next
-decision of the list (S straight, L left, R right, RB1/RB2/RB3 roundabout exit) and then goes back to the camera.
+`python3 lane_follow.py --route S,L,R,RB2` - at every place where the yellow line ends the car does the next
+decision of the list when the **yellow line ends** (our mat has no stop lines at the intersections; S straight, L left, R right, RB1/RB2/RB3 roundabout exit) and then goes back to the camera.
 The list repeats forever.
 
 **Calibrate ONE maneuver at a time** (the numbers in `MANEUVERS` are guesses):
