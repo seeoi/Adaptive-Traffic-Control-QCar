@@ -9,6 +9,12 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 1.1.1 - 2026-11-02
+- Real test of `--turntest S` (car 7): it drove 1.00 m and stopped as designed (the test ends after one
+  maneuver), but drifted LEFT (turned 11 deg in 1 m) because the wheels were held at 0. Gyro works.
+  Fix: in "straight" steps the car keeps following the yellow line while the camera sees it
+  (3+ of 5 rows); it holds the wheels at 0 only when it does not see the line.
+
 ## 1.1.0 - 2026-11-02
 - NEW route and maneuvers: `--route S,L,R,RB2` makes the car do one decision per stop line
   (S straight, L left, R right, RB1/RB2/RB3 roundabout exit 1/2/3) and repeat the list forever.

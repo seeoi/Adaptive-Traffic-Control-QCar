@@ -54,7 +54,7 @@ from pal.products.qcar import QCar, QCarCameras, QCarLidar
 # Version of THIS file. It is printed every time the script starts, so you can
 # always tell which version is running on the car. Change it with every edit and
 # write the change in CHANGELOG.md (see the "Versions" section of the README).
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 
 # =============================================================================
 # SETTINGS  (the numbers you will most likely want to change are at the top)
@@ -483,6 +483,7 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
     man_turn = 0.0             # Degrees turned in this step (always positive).
     man_start = 0.0            # When the maneuver began.
     man_name = ""
+    last_yellow_ok = 0.0       # Last moment the camera saw the yellow line well (3+ of 5 rows).
     man_total_dist = man_total_turn = 0.0
     frame_count = 0
     yellow_rows = 0
@@ -531,6 +532,8 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
                     frame_count += 1
                     frames_since_print += 1
                     lane_error, stop_seen, yellow_rows = detector.update(image)
+                    if yellow_rows >= 3:
+                        last_yellow_ok = now
                     cam_dt = max(now - t_cam, 0.02)   # Time between camera frames.
                     t_cam = now
 
@@ -570,7 +573,10 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
                     man_turn += turned
                     man_total_turn += turned
                     if kind == "straight":
-                        steer_target = 0.0
+                        # If the camera still sees the yellow line, keep following it (it keeps the
+                        # car straight). If not (inside the intersection), hold the wheels at 0.
+                        if (now - last_yellow_ok) > 0.3:
+                            steer_target = 0.0
                         step_done = man_dist >= man_steps[man_i][1]
                     else:
                         steer_target = float(np.clip(man_steps[man_i][1], -MAX_STEER, MAX_STEER))
