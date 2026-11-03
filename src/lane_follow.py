@@ -54,7 +54,7 @@ from pal.products.qcar import QCar, QCarCameras, QCarLidar
 # Version of THIS file. It is printed every time the script starts, so you can
 # always tell which version is running on the car. Change it with every edit and
 # write the change in CHANGELOG.md (see the "Versions" section of the README).
-VERSION = "1.1.5"
+VERSION = "1.1.6"
 
 # =============================================================================
 # SETTINGS  (the numbers you will most likely want to change are at the top)
@@ -741,7 +741,9 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
                     print(f"{now - t_start:6.1f}s {label:<16} speed={speed:+.2f} "
                           f"target={speed_target:.2f} throttle={throttle:.3f} "
                           f"steer={steer:+.2f} lane_err={err_text} "
-                          f"yellow={yellow_rows}/5 cam={fps:4.1f}fps lidar={lidar_text}")
+                          f"yellow={yellow_rows}/5 cam={fps:4.1f}fps lidar={lidar_text}"
+                          + (f" turned={man_total_turn:3.0f}deg dist={man_total_dist:.2f}m"
+                             if state == "MANEUVER" else ""))
 
             qcar.write(throttle=0, steering=0)   # Always leave the car stopped.
     finally:

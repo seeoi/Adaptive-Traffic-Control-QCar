@@ -9,6 +9,12 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 1.1.6 - 2026-11-02
+- Status line shows `turned=..deg dist=..m` during a maneuver, to see how the turn really goes.
+- Real tests of `--route R` (v1.1.5): the `yellow_end` trigger fired. The right turn was entered at 0.37 m/s
+  with full lock, the car slowed to 0.05-0.1 m/s, never saw the yellow line again (0/5) and kept turning right.
+  Starting a route test with NO yellow line in view never triggers (use `--turntest` there).
+
 ## 1.1.5 - 2026-11-02
 - Our mat has NO white stop lines at the intersection. New default route trigger `ROUTE_TRIGGER = "yellow_end"`:
   when the yellow line was seen well and then disappears for 0.3 s, the car starts the next maneuver of the route.
