@@ -51,7 +51,7 @@ from pal.products.qcar import QCar, QCarCameras, QCarLidar
 # Version of THIS file. It is printed every time the script starts, so you can
 # always tell which version is running on the car. Change it with every edit and
 # write the change in CHANGELOG.md (see the "Versions" section of the README).
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 
 # =============================================================================
 # SETTINGS  (the numbers you will most likely want to change are at the top)
@@ -92,7 +92,11 @@ STEER_RATE = 3.0    # Largest steering change per second (smooths the movement).
 STEER_ALPHA = 0.5   # Smoothing of the camera reading (0 to 1). Lower = smoother but slower.
 STEER_TRIM = 0.0    # Small constant steering offset in radians (positive = left).
                     # Use it if the car drifts to one side on a straight road.
-LOST_TIME = 1.0     # Seconds without seeing the lane before the car stops.
+LOST_TIME = 3.0     # Seconds without seeing the lane before the car stops.
+                    # 3.0 worked on a real car: in a curve the line can disappear for a moment.
+CAMERA_TIMEOUT = 0.5  # SAFETY: seconds without ANY camera picture before the car stops at once.
+                      # Different from LOST_TIME: here the camera itself went silent.
+CAMERA_GIVE_UP = 5.0  # If the camera stays silent this long, end the run (the car is already stopped).
 
 # ---- Stop lines / traffic light (OFF for now) --------------------------------
 USE_STOP_LINES = False  # Set True later, when the traffic lights are working.
@@ -429,6 +433,9 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME):
     speed_integral = 0.0       # Accumulated speed error (for the speed controller).
     blocked = False            # True while the LiDAR says something is in the way.
     last_lane_time = time.time()   # Last moment we saw the lane.
+    last_image_time = time.time() + 1.0  # Last moment the camera sent ANY picture.
+                                   # (+1 s of extra time at the start: the first picture can be slow.)
+    camera_warned = False          # True after we printed the "camera stopped" warning.
     ignore_stop_until = 0.0
     frame_count = 0
     yellow_rows = 0
@@ -457,6 +464,7 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME):
                 image = grab_frame(cameras)
                 lane_error = None
                 if image is not None:
+                    last_image_time = now          # The camera is alive.
                     frame_count += 1
                     frames_since_print += 1
                     lane_error, stop_seen, yellow_rows = detector.update(image)
@@ -493,6 +501,16 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME):
                 max_change = STEER_RATE * dt
                 steer += float(np.clip(steer_target - steer, -max_change, max_change))
 
+                # ---- CAMERA WATCHDOG: is the camera still sending pictures? ---
+                # If the camera dies, the car must NOT keep driving blind.
+                camera_dead = (now - last_image_time) > CAMERA_TIMEOUT
+                if camera_dead and not camera_warned:
+                    print("WARNING: the camera stopped sending pictures. Stopping the car.")
+                camera_warned = camera_dead      # Warn again if it happens a second time.
+                if camera_dead and (now - last_image_time) > CAMERA_GIVE_UP:
+                    print("The camera did not come back. Ending the run.")
+                    break                        # The car is already stopped (throttle 0).
+
                 # ---- STATE MACHINE: decide the target speed -------------------
                 if state == "STOP_LINE":
                     if light_is_green():
@@ -503,7 +521,10 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME):
                 else:
                     lane_lost = (now - last_lane_time) > LOST_TIME
                     state = "LOST" if lane_lost else "DRIVE"
-                    if lane_lost:
+                    if camera_dead:
+                        state = "CAMERA_STOPPED"
+                        speed_target = 0.0          # No pictures at all -> stop at once.
+                    elif lane_lost:
                         speed_target = 0.0          # Cannot see the lane -> stop.
                     elif abs(steer) > 0.25:
                         speed_target = V_CURVE      # Turning hard -> slow down.

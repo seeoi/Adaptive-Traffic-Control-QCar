@@ -15,10 +15,12 @@ Traffic lights, V2I, multiple cars and external cameras come after that.
 
 ## Quick start (about 5 minutes)
 
-1. Connect your laptop to the QCar's Wi-Fi network. The car we used is `nvidia@qcar-67815` at `192.168.2.183` (user and password: `nvidia`).
+1. Connect your laptop to the cars' Wi-Fi network (`Quanser_UVS_209-5G`, no internet). Read the car's IP on its
+   screen: it can change after a restart. Cars we used: car 5 = `nvidia@qcar-67798` at `192.168.2.217`,
+   `nvidia@qcar-67815` at `192.168.2.183` (user and password: `nvidia`). Type the FULL IP.
 2. Copy the script from your laptop to the car (run this on the LAPTOP):
-   `scp src/lane_follow.py nvidia@192.168.2.183:~/`
-3. Open an SSH session on the car: `ssh nvidia@192.168.2.183`
+   `scp src/lane_follow.py nvidia@192.168.2.217:~/`
+3. Open an SSH session on the car: `ssh nvidia@192.168.2.217`
 4. On the car, once per terminal:
    `export PYTHONPATH=~/Documents/Quanser/libraries/python`
 5. Run the tests in this order (the car does not move in 1 and 2):
@@ -27,9 +29,14 @@ Traffic lights, V2I, multiple cars and external cameras come after that.
    2. `python3 lane_follow.py --dry` - runs everything with the motor OFF. Move the car by hand and check that `yellow=` shows 3/5 or more.
    3. `python3 lane_follow.py` - drives. Put the car in the RIGHT lane with the yellow line on its LEFT. **Ctrl+C stops it.**
 
+**Faster way:** `run.ps1` does steps 2 to 5 in one command. Put the car's IP at the top of the file, then run
+(from the repo folder, in PowerShell on the laptop):
+`powershell -ExecutionPolicy Bypass -File .\run.ps1 --camtest`   (or `--dry`, or `--time 60`)
+
 Do **not** use `sudo`: it fails with a privileges error on our cars.
-To stop a stuck program from another terminal: `pkill -f lane_follow.py`.
-To download debug pictures to the laptop: `scp -r nvidia@192.168.2.183:~/debug .`
+Stop with **Ctrl+C**, never Ctrl+Z (Ctrl+Z only pauses it and leaves the camera locked: "GPIO is in use").
+To stop a stuck program from another terminal: `pkill -9 -f lane_follow.py`.
+To download debug pictures to the laptop: `scp -r nvidia@192.168.2.217:~/debug .`
 
 ## Tuning (all numbers are at the top of `src/lane_follow.py`)
 
@@ -41,11 +48,16 @@ To download debug pictures to the laptop: `scp -r nvidia@192.168.2.183:~/debug .
 | Wheels turn the wrong way | Set `STEER_SIGN = -1` |
 | Car drifts to one side on a straight road | Adjust `STEER_TRIM` by 0.02 at a time |
 | Yellow line is not detected | Lower `YELLOW_DELTA` (12 -> 8) |
+| Car stops in curves (`LOST` in the status line) | Raise `LOST_TIME` (now 3.0) |
+| Car is slow but steady | Raise `THROTTLE_BASE` by 0.01, then `V_MAX` by 0.05 |
 
 ## Known problems and lessons learned
 
 * **Fast forward/backward jerking:** the old speed controllers could output a negative throttle,
   and on the QCar negative throttle = reverse. `lane_follow.py` clamps the throttle to 0..`MAX_THROTTLE`.
+* **Camera sometimes stops** (`cam=0.0fps`, `CAMERA_STOPPED`): the car now stops by itself. After a crash on exit
+  (`Segmentation fault`) or a Ctrl+Z the camera can stay locked: run `pkill -9 -f lane_follow.py`, and if it
+  still fails, restart the car. Low battery (below about 10.5 V) can also drop the camera or the Wi-Fi.
 * **Camera image has a pink tint**, so fixed color ranges for yellow do not work. The code compares
   pixels against the road color instead.
 * **Old LiDAR scripts** (`old/`) use a saved room scan. The last position check was about 2 m and 180 degrees
