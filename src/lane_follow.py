@@ -54,7 +54,7 @@ from pal.products.qcar import QCar, QCarCameras, QCarLidar
 # Version of THIS file. It is printed every time the script starts, so you can
 # always tell which version is running on the car. Change it with every edit and
 # write the change in CHANGELOG.md (see the "Versions" section of the README).
-VERSION = "1.1.6"
+VERSION = "1.2.0"
 
 # =============================================================================
 # SETTINGS  (the numbers you will most likely want to change are at the top)
@@ -442,7 +442,7 @@ def camera_test():
 # =============================================================================
 # MAIN DRIVING LOOP
 # =============================================================================
-def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
+def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None, arm_m=0.0):
     """Drive using the camera. Runs until Ctrl+C or RUN_TIME seconds.
 
     use_lidar - also stop for obstacles seen by the LiDAR.
@@ -450,6 +450,8 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
     run_time  - stop by itself after this many seconds.
     route     - list like ["S", "L", "RB2"]: one decision per stop line, repeated forever.
                 None = no route (old behavior: just follow the line).
+    arm_m     - the route is ignored until the car has driven this many meters (odometer).
+                Until then, every place where the yellow line ends is only REPORTED.
     turntest  - a single maneuver name (like "L"): do it right away, then end the run.
     """
     os.makedirs(DEBUG_DIR, exist_ok=True)
@@ -484,6 +486,7 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
     camera_warned = False          # True after we printed the "camera stopped" warning.
     ignore_stop_until = 0.0
     use_stops = USE_STOP_LINES or (bool(route) and ROUTE_TRIGGER == "stop_line")
+    odo = 0.0                  # Odometer: meters driven since the start of the run.
     yellow_lost_since = None   # When the camera stopped seeing ANY yellow (None = it sees some).
     route_index = 0            # Which decision of the route comes next.
     stop_start = 0.0           # When the car started waiting at a stop line.
@@ -531,6 +534,7 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
                 # ---- Read the car's wheel speed (m/s) -------------------------
                 qcar.read()
                 speed = float(qcar.motorTach)
+                odo += max(speed, 0.0) * dt
                 # Gyroscope turn rate around the vertical axis (rad/s). If the car has no gyro, 0.
                 try:
                     gyro = float(qcar.gyroscope[2])
@@ -559,13 +563,18 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
                             and now > ignore_stop_until and yellow_lost_since is not None
                             and now - yellow_lost_since >= END_LOST_S
                             and now - last_yellow_ok <= END_SEEN_S):
-                        man_name = route[route_index % len(route)]
-                        route_index += 1
-                        man_steps, man_i = MANEUVERS[man_name], 0
-                        man_dist = man_turn = man_total_dist = man_total_turn = 0.0
-                        man_start = now
-                        state = "MANEUVER"
-                        print(f"Yellow line ended - maneuver {man_name}")
+                        if odo < arm_m:
+                            # Not armed yet: just report where the yellow line ended, then wait.
+                            print(f"*** Yellow line ended at odo={odo:.2f} m (route not armed until {arm_m:.2f} m)")
+                            ignore_stop_until = now + END_COOLDOWN_S
+                        else:
+                            man_name = route[route_index % len(route)]
+                            route_index += 1
+                            man_steps, man_i = MANEUVERS[man_name], 0
+                            man_dist = man_turn = man_total_dist = man_total_turn = 0.0
+                            man_start = now
+                            state = "MANEUVER"
+                            print(f"Yellow line ended at odo={odo:.2f} m - maneuver {man_name}")
                     if yellow_rows >= HANDOVER_ROWS:
                         if yellow_good_since is None:
                             yellow_good_since = now
@@ -741,7 +750,7 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
                     print(f"{now - t_start:6.1f}s {label:<16} speed={speed:+.2f} "
                           f"target={speed_target:.2f} throttle={throttle:.3f} "
                           f"steer={steer:+.2f} lane_err={err_text} "
-                          f"yellow={yellow_rows}/5 cam={fps:4.1f}fps lidar={lidar_text}"
+                          f"yellow={yellow_rows}/5 cam={fps:3.0f}fps odo={odo:5.2f}m lidar={lidar_text}"
                           + (f" turned={man_total_turn:3.0f}deg dist={man_total_dist:.2f}m"
                              if state == "MANEUVER" else ""))
 
@@ -769,6 +778,8 @@ if __name__ == "__main__":
                         help="run everything but keep the motor OFF")
     parser.add_argument("--route", default=None,
                         help="comma list of decisions, one per stop line, repeated: S,L,R,RB1,RB2,RB3")
+    parser.add_argument("--arm-m", type=float, default=0.0,
+                        help="ignore the route until the car has driven this many meters (odometer)")
     parser.add_argument("--turntest", default=None,
                         help="do ONE maneuver (S, L, R, RB1, RB2 or RB3) right now, then stop (calibration)")
     parser.add_argument("--time", type=int, default=RUN_TIME,
@@ -787,4 +798,4 @@ if __name__ == "__main__":
             if name not in MANEUVERS:
                 raise SystemExit(f"Unknown maneuver '{name}'. Use: {', '.join(MANEUVERS)}")
         drive(args.lidar, args.dry, args.time, route,
-              args.turntest.upper() if args.turntest else None)
+              args.turntest.upper() if args.turntest else None, args.arm_m)

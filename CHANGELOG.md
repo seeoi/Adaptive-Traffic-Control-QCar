@@ -9,6 +9,11 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 1.2.0 - 2026-11-02
+- New `--arm-m METERS`: the route is ignored until the odometer reaches this distance. Before that, every place
+  where the yellow line ends is only reported (`*** Yellow line ended at odo=X m`). This lets the route start
+  at the right corner of a longer drive. The status line now also shows `odo=` (meters driven).
+
 ## 1.1.6 - 2026-11-02
 - Status line shows `turned=..deg dist=..m` during a maneuver, to see how the turn really goes.
 - Real tests of `--route R` (v1.1.5): the `yellow_end` trigger fired. The right turn was entered at 0.37 m/s
