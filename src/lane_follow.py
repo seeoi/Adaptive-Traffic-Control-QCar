@@ -54,7 +54,7 @@ from pal.products.qcar import QCar, QCarCameras, QCarLidar
 # Version of THIS file. It is printed every time the script starts, so you can
 # always tell which version is running on the car. Change it with every edit and
 # write the change in CHANGELOG.md (see the "Versions" section of the README).
-VERSION = "1.1.2"
+VERSION = "1.1.3"
 
 # =============================================================================
 # SETTINGS  (the numbers you will most likely want to change are at the top)
@@ -134,7 +134,7 @@ MANEUVER_MAX_S = 12.0   # SAFETY: if a maneuver takes longer than this, give up 
 MANEUVERS = {
     "S":   [("straight", 1.00)],
     "L":   [("straight", 0.45), ("arc", +0.35, 90), ("straight", 0.10)],
-    "R":   [("straight", 0.15), ("arc", -0.40, 90), ("straight", 0.10)],
+    "R":   [("straight", 0.05), ("arc", -0.50, 90), ("straight", 0.10)],   # -0.50 = tightest turn the QCar can do
     # Roundabout (cars drive counter-clockwise): go in, circle LEFT, leave at the chosen exit.
     "RB1": [("straight", 0.20), ("arc", +0.30, 60),  ("straight", 0.30)],
     "RB2": [("straight", 0.20), ("arc", +0.30, 150), ("straight", 0.30)],

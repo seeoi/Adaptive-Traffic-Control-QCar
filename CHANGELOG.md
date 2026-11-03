@@ -9,6 +9,14 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 1.1.3 - 2026-11-02
+- Real tests of `--turntest R` (car 7, twice, v1.1.2): the camera took over at 81 deg after 1.64 m both times.
+  The turn is too WIDE (radius about 1.1 m): at about 7 s the car crossed to the left of the yellow line of
+  the new road. Run 1 then followed the left curve well; run 2 had lost the line (yellow 1/5) and drove straight.
+  Fix: `R` now starts the turn almost at once (0.05 m instead of 0.15) and uses full lock (-0.50 instead of -0.40).
+- Note: after the turn the speed went up to 0.41 m/s (target 0.20). The motor push (`THROTTLE_BASE`) is too big for
+  slow targets; not changed yet. If it is too fast, go back to `V_MAX` 0.30 and `THROTTLE_BASE` 0.07.
+
 ## 1.1.2 - 2026-11-02
 - Real test of `--turntest R` (car 7): the right turn was good, but it kept full right steering until the
   gyro counted 90 deg (9.6 s, 1.93 m) even though the camera saw the yellow line from 7.6 s, so it
