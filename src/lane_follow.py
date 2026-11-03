@@ -54,7 +54,7 @@ from pal.products.qcar import QCar, QCarCameras, QCarLidar
 # Version of THIS file. It is printed every time the script starts, so you can
 # always tell which version is running on the car. Change it with every edit and
 # write the change in CHANGELOG.md (see the "Versions" section of the README).
-VERSION = "1.1.3"
+VERSION = "1.1.4"
 
 # =============================================================================
 # SETTINGS  (the numbers you will most likely want to change are at the top)
@@ -156,7 +156,7 @@ RUN_TIME = 60       # SAFETY: the program stops by itself after this many second
                     # Change it for one run with:  --time 120
 RATE_HZ = 200       # How often the QCar interface runs.
 PRINT_HZ = 5        # How many status lines per second are printed on screen.
-SAVE_EVERY = 10     # Save one debug picture every N camera frames.
+SAVE_EVERY = 0.25   # Save one debug picture every this many seconds (0 = never). 80 pictures = the last 20 s.
 DEBUG_DIR = "debug"  # Folder where debug pictures are saved.
 
 
@@ -495,6 +495,8 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
     yellow_rows = 0
     t_prev = t_cam = t_start = time.time()
     t_print = 0.0
+    t_save = 0.0               # Last time a debug picture was saved.
+    pictures_saved = 0
     frames_since_print = 0
 
     log_file = open(f"run_{time.strftime('%H%M%S')}.csv", "w", newline="")
@@ -571,9 +573,11 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
                         print("Stop line seen - waiting for green")
 
                     # Save a debug picture every SAVE_EVERY frames (they loop over 60 files).
-                    if SAVE_EVERY and frame_count % SAVE_EVERY == 0:
-                        cv2.imwrite(f"{DEBUG_DIR}/drive_{(frame_count // SAVE_EVERY) % 60:02d}.jpg",
-                                    detector.draw(image, f"{state} steer={steer:+.2f}"))
+                    if SAVE_EVERY and now - t_save >= SAVE_EVERY:
+                        t_save = now
+                        cv2.imwrite(f"{DEBUG_DIR}/drive_{pictures_saved % 80:02d}.jpg",
+                                    detector.draw(image, f"{now - t_start:.1f}s {state} steer={steer:+.2f}"))
+                        pictures_saved += 1
 
                 # ---- MANEUVER: measure progress and choose the steering -------
                 if state == "MANEUVER":

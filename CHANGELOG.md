@@ -9,6 +9,13 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 1.1.4 - 2026-11-02
+- Real test of `--route R` (car 7): the car followed the curve, the yellow line ended (`yellow=0/5`) and the
+  car NEVER reported `Stop line seen`, so it never started the right turn. Cause: the stop-line check needs the
+  yellow line to be visible too, and at the stop line the yellow has already ended. Not fixed yet: we need a
+  camera picture taken at the stop line.
+- Debug pictures: one every 0.25 s (before: ~15 per second), 80 files = the last 20 s, with the time on them.
+
 ## 1.1.3 - 2026-11-02
 - Real tests of `--turntest R` (car 7, twice, v1.1.2): the camera took over at 81 deg after 1.64 m both times.
   The turn is too WIDE (radius about 1.1 m): at about 7 s the car crossed to the left of the yellow line of
