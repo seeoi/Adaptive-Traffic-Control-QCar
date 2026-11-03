@@ -40,6 +40,20 @@ Stop with **Ctrl+C**, never Ctrl+Z (Ctrl+Z only pauses it and leaves the camera 
 To stop a stuck program from another terminal: `pkill -9 -f lane_follow.py`.
 To download debug pictures to the laptop: `scp -r nvidia@192.168.2.183:~/debug .`
 
+## Full track: route and maneuvers (v1.1.0, needs calibration)
+
+`python3 lane_follow.py --route S,L,R,RB2` - at every stop line the car stops, waits for green, does the next
+decision of the list (S straight, L left, R right, RB1/RB2/RB3 roundabout exit) and then goes back to the camera.
+The list repeats forever.
+
+**Calibrate ONE maneuver at a time** (the numbers in `MANEUVERS` are guesses):
+1. Put the car on the lane, stopped right at the stop line of the intersection.
+2. `python3 lane_follow.py --turntest L` (or `S`, `R`, `RB2`...). The car does only that maneuver and stops.
+3. Look where it ended and read the printed line, for example `drove 1.20 m, turned 88 deg`.
+4. Wrong? Change that maneuver in `MANEUVERS`: too short/long -> the meters; ends too far inside/outside the
+   curve -> the steering number (bigger number = tighter turn); turned too little/much -> the degrees.
+5. Repeat until it ends in the right lane facing the right way, 3 times in a row. Then test `--route`.
+
 ## Tuning (all numbers are at the top of `src/lane_follow.py`)
 
 | Problem | Change |
@@ -92,9 +106,9 @@ there is no yellow line there. It also has no idea WHERE it wants to go. The fix
 decisions) plus **maneuvers** (short moves done with wheel distance and gyro heading, then back to the camera).
 
 - [x] 1. Follow the yellow line around the track (`lane_follow.py`, tested on car 5)
-- [ ] 2. Stop at stop lines and wait for the (fake) light (`USE_STOP_LINES`)
-- [ ] 3. Route list + intersection maneuvers: left / straight / right
-- [ ] 4. Roundabout: enter, take exit 1, 2 or 3, leave. Then repeat the route forever (loop)
+- [ ] 2. Stop at stop lines and wait for the (fake) light - code written in 1.1.0, NOT tested on the mat
+- [ ] 3. Route list + intersection maneuvers: left / straight / right - code written, needs calibration
+- [ ] 4. Roundabout exits 1, 2, 3 and route loop - code written, needs calibration
 - [ ] 5. LiDAR obstacle stop (`--lidar`) tested
 - [ ] 6. Review the previous team's code (Flask server on the Raspberry Pi) and install the physical traffic lights
 - [ ] 7. Replace the fake light in `light_is_green()` with the real controller / V2I message

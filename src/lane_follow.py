@@ -22,6 +22,9 @@ HOW TO RUN (on the QCar, over SSH)
     python3 lane_follow.py --lidar       # drives and stops if something is ahead
     python3 lane_follow.py --lidartest   # shows which LiDAR angle is "front"
 
+    python3 lane_follow.py --route S,L,R2   # follow a ROUTE (see "ROUTE AND MANEUVERS" below)
+    python3 lane_follow.py --turntest L     # do ONE maneuver now, to calibrate it (car on a stop line)
+
 Place the car in the RIGHT lane with the yellow line on its LEFT side.
 Do NOT use sudo (it causes a privileges error on our cars).
 
@@ -51,7 +54,7 @@ from pal.products.qcar import QCar, QCarCameras, QCarLidar
 # Version of THIS file. It is printed every time the script starts, so you can
 # always tell which version is running on the car. Change it with every edit and
 # write the change in CHANGELOG.md (see the "Versions" section of the README).
-VERSION = "1.0.3"
+VERSION = "1.1.0"
 
 # =============================================================================
 # SETTINGS  (the numbers you will most likely want to change are at the top)
@@ -103,6 +106,36 @@ USE_STOP_LINES = False  # Set True later, when the traffic lights are working.
 STOP_FILL = 0.65        # How much of the lane must look white to count as a stop line.
 STOP_ROWS = (0.86, 0.96)  # Which image rows are checked for a stop line.
 STOP_IGNORE_S = 3.0     # After leaving a stop line, ignore stop lines for this many seconds.
+
+# ---- Route and maneuvers (NEW in 1.1.0) ---------------------------------------
+# HOW IT WORKS: on a normal road the car follows the yellow line with the camera.
+# At an intersection or roundabout there is no yellow line, so when the car sees a stop
+# line it stops, waits for green and then does a short MANEUVER by "dead reckoning":
+# it drives a set distance (wheel speed) and turns a set angle (gyroscope), and when
+# that is done it goes back to the camera.
+#
+# The ROUTE is the list of decisions, one per stop line. It repeats forever (loop).
+#   S    = go straight          L = turn left          R = turn right
+#   RB1, RB2, RB3 = roundabout: take the 1st, 2nd or 3rd exit
+# Example:  --route S,L,RB2
+V_MANEUVER = 0.20       # Speed during a maneuver (m/s). Slow = more repeatable.
+MIN_STOP_S = 1.0        # Wait at least this long at a stop line, even if the light is green.
+MANEUVER_MAX_S = 12.0   # SAFETY: if a maneuver takes longer than this, give up and use the camera.
+
+# Each maneuver is a list of steps:
+#   ("straight", meters)               drive straight this far
+#   ("arc", steering_rad, degrees)     steer this much until the car has turned this many degrees
+# Steering: POSITIVE = LEFT, NEGATIVE = RIGHT.
+# !!! These numbers are FIRST GUESSES. Calibrate them with:  --turntest L   (see README). !!!
+MANEUVERS = {
+    "S":   [("straight", 1.00)],
+    "L":   [("straight", 0.45), ("arc", +0.35, 90), ("straight", 0.10)],
+    "R":   [("straight", 0.15), ("arc", -0.40, 90), ("straight", 0.10)],
+    # Roundabout (cars drive counter-clockwise): go in, circle LEFT, leave at the chosen exit.
+    "RB1": [("straight", 0.20), ("arc", +0.30, 60),  ("straight", 0.30)],
+    "RB2": [("straight", 0.20), ("arc", +0.30, 150), ("straight", 0.30)],
+    "RB3": [("straight", 0.20), ("arc", +0.30, 240), ("straight", 0.30)],
+}
 
 # ---- LiDAR (only used with --lidar) ------------------------------------------
 LIDAR_FRONT = 0.0   # LiDAR angle (radians) that points straight ahead. Find it with --lidartest.
@@ -399,12 +432,15 @@ def camera_test():
 # =============================================================================
 # MAIN DRIVING LOOP
 # =============================================================================
-def drive(use_lidar, dry_run, run_time=RUN_TIME):
+def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
     """Drive using the camera. Runs until Ctrl+C or RUN_TIME seconds.
 
     use_lidar - also stop for obstacles seen by the LiDAR.
     dry_run   - do everything EXCEPT turn the motor (throttle is forced to 0).
     run_time  - stop by itself after this many seconds.
+    route     - list like ["S", "L", "RB2"]: one decision per stop line, repeated forever.
+                None = no route (old behavior: just follow the line).
+    turntest  - a single maneuver name (like "L"): do it right away, then end the run.
     """
     os.makedirs(DEBUG_DIR, exist_ok=True)
 
@@ -437,6 +473,17 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME):
                                    # (+1 s of extra time at the start: the first picture can be slow.)
     camera_warned = False          # True after we printed the "camera stopped" warning.
     ignore_stop_until = 0.0
+    use_stops = USE_STOP_LINES or bool(route)   # A route needs the stop lines to know where to act.
+    route_index = 0            # Which decision of the route comes next.
+    stop_start = 0.0           # When the car started waiting at a stop line.
+    gyro_bias = 0.0            # Gyroscope reading when standing still (rad/s). Subtracted.
+    man_steps = []             # Steps of the maneuver we are doing now.
+    man_i = 0                  # Which step we are on.
+    man_dist = 0.0             # Meters driven in this step.
+    man_turn = 0.0             # Degrees turned in this step (always positive).
+    man_start = 0.0            # When the maneuver began.
+    man_name = ""
+    man_total_dist = man_total_turn = 0.0
     frame_count = 0
     yellow_rows = 0
     t_prev = t_cam = t_start = time.time()
@@ -447,6 +494,15 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME):
     log = csv.writer(log_file)
     log.writerow(["t", "state", "speed", "speed_target", "throttle", "steer",
                   "lane_error", "yellow_rows", "lidar_front_m"])
+
+    if turntest:
+        man_name, man_steps, man_i = turntest, MANEUVERS[turntest], 0
+        man_dist = man_turn = man_total_dist = man_total_turn = 0.0
+        man_start = time.time()
+        state = "MANEUVER"
+        print(f"TURN TEST: doing maneuver {turntest} now, then stopping.")
+    elif route:
+        print(f"Route: {' -> '.join(route)} (repeats). One decision per stop line.")
 
     print("DRY RUN: motor is OFF." if dry_run else "Driving. Press Ctrl+C to stop.")
     try:
@@ -459,6 +515,13 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME):
                 # ---- Read the car's wheel speed (m/s) -------------------------
                 qcar.read()
                 speed = float(qcar.motorTach)
+                # Gyroscope turn rate around the vertical axis (rad/s). If the car has no gyro, 0.
+                try:
+                    gyro = float(qcar.gyroscope[2])
+                except Exception:
+                    gyro = 0.0
+                if abs(speed) < 0.02:   # Standing still: whatever the gyro says is its error (bias).
+                    gyro_bias = 0.98 * gyro_bias + 0.02 * gyro
 
                 # ---- CAMERA: how far are we from the lane center? -------------
                 image = grab_frame(cameras)
@@ -488,14 +551,45 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME):
                             -MAX_STEER, MAX_STEER))
                         error_previous = error_filtered
 
-                    if USE_STOP_LINES and state == "DRIVE" and stop_seen and now > ignore_stop_until:
+                    if use_stops and state == "DRIVE" and stop_seen and now > ignore_stop_until:
                         state = "STOP_LINE"
+                        stop_start = now
                         print("Stop line seen - waiting for green")
 
                     # Save a debug picture every SAVE_EVERY frames (they loop over 60 files).
                     if SAVE_EVERY and frame_count % SAVE_EVERY == 0:
                         cv2.imwrite(f"{DEBUG_DIR}/drive_{(frame_count // SAVE_EVERY) % 60:02d}.jpg",
                                     detector.draw(image, f"{state} steer={steer:+.2f}"))
+
+                # ---- MANEUVER: measure progress and choose the steering -------
+                if state == "MANEUVER":
+                    kind = man_steps[man_i][0]
+                    man_dist += max(speed, 0.0) * dt
+                    man_total_dist += max(speed, 0.0) * dt
+                    turned = abs(gyro - gyro_bias) * dt * 180.0 / np.pi   # degrees this loop
+                    man_turn += turned
+                    man_total_turn += turned
+                    if kind == "straight":
+                        steer_target = 0.0
+                        step_done = man_dist >= man_steps[man_i][1]
+                    else:
+                        steer_target = float(np.clip(man_steps[man_i][1], -MAX_STEER, MAX_STEER))
+                        step_done = man_turn >= man_steps[man_i][2]
+                    if step_done:
+                        man_i += 1
+                        man_dist = man_turn = 0.0
+                    if man_i >= len(man_steps) or (now - man_start) > MANEUVER_MAX_S:
+                        timed_out = man_i < len(man_steps)
+                        print(f"Maneuver {man_name} {'TIMED OUT' if timed_out else 'done'}: "
+                              f"drove {man_total_dist:.2f} m, turned {man_total_turn:.0f} deg")
+                        if turntest:
+                            break                     # Calibration run: one maneuver only.
+                        # Back to the camera: forget the old line positions and search again.
+                        detector.yellow_x = [None] * len(SCAN_ROWS)
+                        error_filtered = None
+                        last_lane_time = now
+                        ignore_stop_until = now + STOP_IGNORE_S
+                        state = "DRIVE"
 
                 # ---- STEERING: move toward the target, but not too fast -------
                 max_change = STEER_RATE * dt
@@ -512,12 +606,23 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME):
                     break                        # The car is already stopped (throttle 0).
 
                 # ---- STATE MACHINE: decide the target speed -------------------
-                if state == "STOP_LINE":
-                    if light_is_green():
-                        state = "DRIVE"
-                        ignore_stop_until = now + STOP_IGNORE_S
-                        print("Green - go")
+                if state == "MANEUVER":
+                    speed_target = 0.0 if camera_dead else V_MANEUVER   # Never drive blind.
+                elif state == "STOP_LINE":
                     speed_target = 0.0
+                    if light_is_green() and (now - stop_start) >= MIN_STOP_S:
+                        print("Green - go")
+                        if route:
+                            man_name = route[route_index % len(route)]
+                            route_index += 1
+                            man_steps, man_i = MANEUVERS[man_name], 0
+                            man_dist = man_turn = man_total_dist = man_total_turn = 0.0
+                            man_start = now
+                            state = "MANEUVER"
+                            print(f"Maneuver {man_name}")
+                        else:
+                            state = "DRIVE"
+                            ignore_stop_until = now + STOP_IGNORE_S
                 else:
                     lane_lost = (now - last_lane_time) > LOST_TIME
                     state = "LOST" if lane_lost else "DRIVE"
@@ -533,6 +638,7 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME):
 
                 # ---- LIDAR has the last word: obstacle ahead -> stop ----------
                 front = lidar.front if lidar else np.inf
+                label = state            # Text shown on screen (may get "+OBSTACLE" added).
                 if lidar:
                     # "Hysteresis": stop at D_STOP but only restart past D_GO.
                     # This prevents rapid stop/go flickering.
@@ -542,7 +648,7 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME):
                         blocked = False
                     if blocked:
                         speed_target = 0.0
-                        state += "+OBSTACLE"
+                        label += "+OBSTACLE"
 
                 # ---- THROTTLE: only 0 to MAX_THROTTLE, NEVER negative ---------
                 if speed_target <= 0.0:
@@ -564,7 +670,7 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME):
 
                 # ---- LOG to the CSV file --------------------------------------
                 if image is not None:
-                    log.writerow([f"{now - t_start:.2f}", state, f"{speed:.2f}",
+                    log.writerow([f"{now - t_start:.2f}", label, f"{speed:.2f}",
                                   f"{speed_target:.2f}", f"{throttle:.3f}", f"{steer:+.3f}",
                                   "" if lane_error is None else f"{lane_error:+.3f}",
                                   yellow_rows,
@@ -576,7 +682,7 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME):
                     frames_since_print, t_print = 0, now
                     err_text = "  --  " if lane_error is None else f"{lane_error:+.3f}"
                     lidar_text = "--" if not np.isfinite(front) else f"{front:.2f}"
-                    print(f"{now - t_start:6.1f}s {state:<16} speed={speed:+.2f} "
+                    print(f"{now - t_start:6.1f}s {label:<16} speed={speed:+.2f} "
                           f"target={speed_target:.2f} throttle={throttle:.3f} "
                           f"steer={steer:+.2f} lane_err={err_text} "
                           f"yellow={yellow_rows}/5 cam={fps:4.1f}fps lidar={lidar_text}")
@@ -603,6 +709,10 @@ if __name__ == "__main__":
                         help="drive and stop when the LiDAR sees something ahead")
     parser.add_argument("--dry", action="store_true",
                         help="run everything but keep the motor OFF")
+    parser.add_argument("--route", default=None,
+                        help="comma list of decisions, one per stop line, repeated: S,L,R,RB1,RB2,RB3")
+    parser.add_argument("--turntest", default=None,
+                        help="do ONE maneuver (S, L, R, RB1, RB2 or RB3) right now, then stop (calibration)")
     parser.add_argument("--time", type=int, default=RUN_TIME,
                         help=f"stop by itself after this many seconds (default {RUN_TIME})")
     args = parser.parse_args()
@@ -614,4 +724,9 @@ if __name__ == "__main__":
     elif args.camtest:
         camera_test()
     else:
-        drive(args.lidar, args.dry, args.time)
+        route = [x.strip().upper() for x in args.route.split(",")] if args.route else None
+        for name in (route or []) + ([args.turntest.upper()] if args.turntest else []):
+            if name not in MANEUVERS:
+                raise SystemExit(f"Unknown maneuver '{name}'. Use: {', '.join(MANEUVERS)}")
+        drive(args.lidar, args.dry, args.time, route,
+              args.turntest.upper() if args.turntest else None)
