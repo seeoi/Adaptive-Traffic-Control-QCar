@@ -17,7 +17,8 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - Safety: camera watchdog. If the camera sends no picture for `CAMERA_TIMEOUT` (0.5 s) the car stops
   at once and prints a warning; after `CAMERA_GIVE_UP` (5 s) the run ends. Before, a dead camera
   only showed up as `LOST` after the lane timer ran out.
-- New `run.ps1`: copies the script to the car and runs it with one command from the laptop.
+- New `run.ps1`: copies the script to the car and runs it with one command from the laptop
+  (set to car 7, 192.168.2.183; the IP is at the top of the file).
 - Known problem: the camera sometimes stops sending pictures, and one run ended with a
   segmentation fault when closing. After that the camera can fail until the car is restarted.
   Possible causes: camera cable, low battery voltage, or how the camera is released on exit.

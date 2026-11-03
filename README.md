@@ -16,11 +16,11 @@ Traffic lights, V2I, multiple cars and external cameras come after that.
 ## Quick start (about 5 minutes)
 
 1. Connect your laptop to the cars' Wi-Fi network (`Quanser_UVS_209-5G`, no internet). Read the car's IP on its
-   screen: it can change after a restart. Cars we used: car 5 = `nvidia@qcar-67798` at `192.168.2.217`,
-   `nvidia@qcar-67815` at `192.168.2.183` (user and password: `nvidia`). Type the FULL IP.
+   screen: it can change after a restart. Cars we used: car 7 at `192.168.2.183`, car 5 = `nvidia@qcar-67798`
+   at `192.168.2.217` (user and password: `nvidia`). Type the FULL IP.
 2. Copy the script from your laptop to the car (run this on the LAPTOP):
-   `scp src/lane_follow.py nvidia@192.168.2.217:~/`
-3. Open an SSH session on the car: `ssh nvidia@192.168.2.217`
+   `scp src/lane_follow.py nvidia@192.168.2.183:~/`
+3. Open an SSH session on the car: `ssh nvidia@192.168.2.183`
 4. On the car, once per terminal:
    `export PYTHONPATH=~/Documents/Quanser/libraries/python`
 5. Run the tests in this order (the car does not move in 1 and 2):
@@ -36,7 +36,7 @@ Traffic lights, V2I, multiple cars and external cameras come after that.
 Do **not** use `sudo`: it fails with a privileges error on our cars.
 Stop with **Ctrl+C**, never Ctrl+Z (Ctrl+Z only pauses it and leaves the camera locked: "GPIO is in use").
 To stop a stuck program from another terminal: `pkill -9 -f lane_follow.py`.
-To download debug pictures to the laptop: `scp -r nvidia@192.168.2.217:~/debug .`
+To download debug pictures to the laptop: `scp -r nvidia@192.168.2.183:~/debug .`
 
 ## Tuning (all numbers are at the top of `src/lane_follow.py`)
 

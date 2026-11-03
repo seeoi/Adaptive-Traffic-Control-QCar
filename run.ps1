@@ -8,7 +8,9 @@
 #
 # Change the IP below to the car you are using. It is shown on the car's screen
 # and it can change after the car is restarted.
-$CarIP = "192.168.2.217"
+#   Car 7 = 192.168.2.183   (current setting)
+#   Car 5 = 192.168.2.217
+$CarIP = "192.168.2.183"
 
 # Step 1: copy the newest script to the car (the password is: nvidia).
 scp src\lane_follow.py nvidia@${CarIP}:~/
