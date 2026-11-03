@@ -11,6 +11,8 @@ Traffic lights, V2I, multiple cars and external cameras come after that.
 | Path | What it is |
 | --- | --- |
 | `src/lane_follow.py` | **The script to use.** Follows the yellow center line with the front camera. |
+| `tools/` | Helper scripts that do not drive the car (for example `dump_map.py`). |
+| `run.ps1` | One command from the laptop: copies `lane_follow.py` to the car and runs it. |
 | `old/` | Earlier attempts, kept only for reference. Do not drive with them. |
 
 ## Quick start (about 5 minutes)
@@ -81,11 +83,23 @@ To download debug pictures to the laptop: `scp -r nvidia@192.168.2.183:~/debug .
 
 ## Roadmap
 
-- [ ] One QCar completes the full track with the camera only
-- [ ] Add LiDAR obstacle stop (`--lidar`) and test it
-- [ ] Review and import the previous team's code (Flask server on the Raspberry Pi)
-- [ ] Install and configure the physical traffic lights
-- [ ] Replace the fake light in `light_is_green()` with the real controller / V2I message
-- [ ] Adaptive timing: choose which lane gets green AND for how long (wait time, occupancy)
-- [ ] Multiple QCars sharing one traffic light
-- [ ] External cameras to detect cars without V2I
+**Design decision:** the car navigates with the CAMERA + wheel speed + gyro. LiDAR is only used to stop for
+obstacles. Reason: we want to compare cars WITH and WITHOUT LiDAR later, so driving must not depend on LiDAR
+localization (the old map scripts did, and their calibration was wrong).
+
+Why the current script stops at intersections and roundabouts: it only knows "follow the yellow line", and
+there is no yellow line there. It also has no idea WHERE it wants to go. The fix is a **route** (a list of
+decisions) plus **maneuvers** (short moves done with wheel distance and gyro heading, then back to the camera).
+
+- [x] 1. Follow the yellow line around the track (`lane_follow.py`, tested on car 5)
+- [ ] 2. Stop at stop lines and wait for the (fake) light (`USE_STOP_LINES`)
+- [ ] 3. Route list + intersection maneuvers: left / straight / right
+- [ ] 4. Roundabout: enter, take exit 1, 2 or 3, leave. Then repeat the route forever (loop)
+- [ ] 5. LiDAR obstacle stop (`--lidar`) tested
+- [ ] 6. Review the previous team's code (Flask server on the Raspberry Pi) and install the physical traffic lights
+- [ ] 7. Replace the fake light in `light_is_green()` with the real controller / V2I message
+- [ ] 8. Read the traffic light with the camera
+- [ ] 9. Multiple QCars sharing the track and the lights
+- [ ] 10. Hybrid test: some cars with LiDAR, some without
+- [ ] 11. Experiments: which setup gives the best traffic flow; adaptive timing (wait time, occupancy)
+- [ ] 12. External cameras to detect cars without V2I

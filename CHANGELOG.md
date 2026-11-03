@@ -9,6 +9,12 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 1.0.3 - 2026-11-02
+- Slightly faster: `V_MAX` 0.30 -> 0.35 and `THROTTLE_BASE` 0.07 -> 0.08. NOT yet tested at this speed:
+  if the car zig-zags, lower `KP` (0.9 -> 0.7); if it is still too fast, go back one step.
+- New `tools/dump_map.py`: prints the road-map nodes (no driving). Needed to plan intersection
+  and roundabout maneuvers.
+
 ## 1.0.2 - 2026-11-02
 - Tested on a REAL QCar (car 5): one full lap of the lab track, smooth and inside the lane,
   at about 0.22 to 0.28 m/s. Camera test found the yellow line in 5 of 5 scan rows.

@@ -51,16 +51,16 @@ from pal.products.qcar import QCar, QCarCameras, QCarLidar
 # Version of THIS file. It is printed every time the script starts, so you can
 # always tell which version is running on the car. Change it with every edit and
 # write the change in CHANGELOG.md (see the "Versions" section of the README).
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 
 # =============================================================================
 # SETTINGS  (the numbers you will most likely want to change are at the top)
 # =============================================================================
 
 # ---- Speed -------------------------------------------------------------------
-V_MAX = 0.30           # Target speed on straight road, in meters per second.
+V_MAX = 0.35           # Target speed on straight road, in meters per second.
 V_CURVE = 0.20         # Target speed while turning hard (slower is safer).
-THROTTLE_BASE = 0.07   # Fixed motor push (0 to 1) whenever the car should move.
+THROTTLE_BASE = 0.08   # Fixed motor push (0 to 1) whenever the car should move.
                        # Car too slow? Raise by 0.01. Car too fast? Lower it.
 MAX_THROTTLE = 0.15    # Hard limit on the motor command (0 to 1). Never negative.
 KP_V = 0.10            # Speed correction strength (proportional part).
