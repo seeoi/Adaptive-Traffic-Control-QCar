@@ -54,7 +54,7 @@ from pal.products.qcar import QCar, QCarCameras, QCarLidar
 # Version of THIS file. It is printed every time the script starts, so you can
 # always tell which version is running on the car. Change it with every edit and
 # write the change in CHANGELOG.md (see the "Versions" section of the README).
-VERSION = "1.1.1"
+VERSION = "1.1.2"
 
 # =============================================================================
 # SETTINGS  (the numbers you will most likely want to change are at the top)
@@ -120,6 +120,10 @@ STOP_IGNORE_S = 3.0     # After leaving a stop line, ignore stop lines for this 
 # Example:  --route S,L,RB2
 V_MANEUVER = 0.20       # Speed during a maneuver (m/s). Slow = more repeatable.
 MIN_STOP_S = 1.0        # Wait at least this long at a stop line, even if the light is green.
+ARC_MIN_FRACTION = 0.5  # In a turn, the camera may take over once this fraction of the angle is done...
+HANDOVER_ROWS = 4       # ...and it sees the yellow line in at least this many of the 5 rows...
+HANDOVER_S = 0.25       # ...for this many seconds in a row. Then the turn ends early.
+TURNTEST_FOLLOW_S = 4.0 # --turntest: after the maneuver, follow the line this long to see the handover.
 MANEUVER_MAX_S = 12.0   # SAFETY: if a maneuver takes longer than this, give up and use the camera.
 
 # Each maneuver is a list of steps:
@@ -483,6 +487,8 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
     man_turn = 0.0             # Degrees turned in this step (always positive).
     man_start = 0.0            # When the maneuver began.
     man_name = ""
+    turntest_end = None        # --turntest: when to stop after the maneuver.
+    yellow_good_since = None   # When the camera started seeing the yellow line well (None = it does not).
     last_yellow_ok = 0.0       # Last moment the camera saw the yellow line well (3+ of 5 rows).
     man_total_dist = man_total_turn = 0.0
     frame_count = 0
@@ -534,6 +540,11 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
                     lane_error, stop_seen, yellow_rows = detector.update(image)
                     if yellow_rows >= 3:
                         last_yellow_ok = now
+                    if yellow_rows >= HANDOVER_ROWS:
+                        if yellow_good_since is None:
+                            yellow_good_since = now
+                    else:
+                        yellow_good_since = None
                     cam_dt = max(now - t_cam, 0.02)   # Time between camera frames.
                     t_cam = now
 
@@ -581,6 +592,13 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
                     else:
                         steer_target = float(np.clip(man_steps[man_i][1], -MAX_STEER, MAX_STEER))
                         step_done = man_turn >= man_steps[man_i][2]
+                        # Camera takeover: the yellow line is back, so stop turning blindly.
+                        if (not step_done and man_turn >= ARC_MIN_FRACTION * man_steps[man_i][2]
+                                and yellow_good_since is not None
+                                and now - yellow_good_since >= HANDOVER_S):
+                            print(f"Camera sees the line again after {man_total_turn:.0f} deg - taking over")
+                            man_i = len(man_steps) - 1   # Skip to the last step...
+                            step_done = True             # ...and finish it now.
                     if step_done:
                         man_i += 1
                         man_dist = man_turn = 0.0
@@ -588,14 +606,18 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None):
                         timed_out = man_i < len(man_steps)
                         print(f"Maneuver {man_name} {'TIMED OUT' if timed_out else 'done'}: "
                               f"drove {man_total_dist:.2f} m, turned {man_total_turn:.0f} deg")
-                        if turntest:
-                            break                     # Calibration run: one maneuver only.
+                        if turntest and turntest_end is None:
+                            turntest_end = now + TURNTEST_FOLLOW_S   # Calibration: watch the camera for a while.
                         # Back to the camera: forget the old line positions and search again.
                         detector.yellow_x = [None] * len(SCAN_ROWS)
                         error_filtered = None
                         last_lane_time = now
                         ignore_stop_until = now + STOP_IGNORE_S
                         state = "DRIVE"
+
+                if turntest_end is not None and now > turntest_end:
+                    print("Turn test finished.")
+                    break
 
                 # ---- STEERING: move toward the target, but not too fast -------
                 max_change = STEER_RATE * dt

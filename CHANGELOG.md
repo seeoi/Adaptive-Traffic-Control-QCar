@@ -9,6 +9,16 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 1.1.2 - 2026-11-02
+- Real test of `--turntest R` (car 7): the right turn was good, but it kept full right steering until the
+  gyro counted 90 deg (9.6 s, 1.93 m) even though the camera saw the yellow line from 7.6 s, so it
+  turned right again when the road already curved left. Fix: in a turn, once at least half of the angle is
+  done and the camera sees the yellow line in 4+ of 5 rows for 0.25 s, the camera takes over
+  (`ARC_MIN_FRACTION`, `HANDOVER_ROWS`, `HANDOVER_S`).
+- `--turntest` now keeps following the line for 4 s after the maneuver (`TURNTEST_FOLLOW_S`), so you can see
+  the camera handover.
+- Measured: with steering -0.40 at 0.2 m/s the car turns about 11 deg/s (about 1 m radius).
+
 ## 1.1.1 - 2026-11-02
 - Real test of `--turntest S` (car 7): it drove 1.00 m and stopped as designed (the test ends after one
   maneuver), but drifted LEFT (turned 11 deg in 1 m) because the wheels were held at 0. Gyro works.
