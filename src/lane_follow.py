@@ -54,7 +54,7 @@ from pal.products.qcar import QCar, QCarCameras, QCarLidar
 # Version of THIS file. It is printed every time the script starts, so you can
 # always tell which version is running on the car. Change it with every edit and
 # write the change in CHANGELOG.md (see the "Versions" section of the README).
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 
 # =============================================================================
 # SETTINGS  (the numbers you will most likely want to change are at the top)
@@ -62,6 +62,10 @@ VERSION = "1.2.0"
 
 # ---- Speed -------------------------------------------------------------------
 V_MAX = 0.35           # Target speed on straight road, in meters per second.
+ACCEL = 0.25           # Smooth driving: speed may grow by at most this much per second (m/s each second).
+DECEL = 0.60           # ...and may drop by at most this much per second (stops are NOT limited).
+CURVE_START = 0.10     # Steering (rad) where the car starts to slow down for a curve...
+CURVE_FULL = 0.40      # ...and where it reaches V_CURVE. In between the speed changes smoothly.
 V_CURVE = 0.20         # Target speed while turning hard (slower is safer).
 THROTTLE_BASE = 0.08   # Fixed motor push (0 to 1) whenever the car should move.
                        # Car too slow? Raise by 0.01. Car too fast? Lower it.
@@ -486,6 +490,7 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None, arm_
     camera_warned = False          # True after we printed the "camera stopped" warning.
     ignore_stop_until = 0.0
     use_stops = USE_STOP_LINES or (bool(route) and ROUTE_TRIGGER == "stop_line")
+    speed_cmd = 0.0            # Smoothed speed command (m/s) that the speed controller follows.
     odo = 0.0                  # Odometer: meters driven since the start of the run.
     yellow_lost_since = None   # When the camera stopped seeing ANY yellow (None = it sees some).
     route_index = 0            # Which decision of the route comes next.
@@ -696,10 +701,10 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None, arm_
                         speed_target = 0.0          # No pictures at all -> stop at once.
                     elif lane_lost:
                         speed_target = 0.0          # Cannot see the lane -> stop.
-                    elif abs(steer) > 0.25:
-                        speed_target = V_CURVE      # Turning hard -> slow down.
                     else:
-                        speed_target = V_MAX        # Straight road -> normal speed.
+                        # Slow down smoothly: the more the wheels turn, the slower the car.
+                        curve = float(np.clip((abs(steer) - CURVE_START) / (CURVE_FULL - CURVE_START), 0.0, 1.0))
+                        speed_target = V_MAX - curve * (V_MAX - V_CURVE)
 
                 # ---- LIDAR has the last word: obstacle ahead -> stop ----------
                 front = lidar.front if lidar else np.inf
@@ -716,11 +721,19 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None, arm_
                         label += "+OBSTACLE"
 
                 # ---- THROTTLE: only 0 to MAX_THROTTLE, NEVER negative ---------
+                # Speed command: follows the target but with limited acceleration (smooth, natural).
+                # A stop (target 0) is applied at once, for safety.
+                if speed_target <= 0.0:
+                    speed_cmd = 0.0
+                else:
+                    if speed_cmd <= 0.0:
+                        speed_cmd = max(speed, 0.10)     # Starting: begin from the real speed.
+                    speed_cmd += float(np.clip(speed_target - speed_cmd, -DECEL * dt, ACCEL * dt))
                 if speed_target <= 0.0:
                     throttle = 0.0          # Want to stop: just release the motor.
                     speed_integral = 0.0
                 else:
-                    speed_error = speed_target - speed
+                    speed_error = speed_cmd - speed
                     speed_integral = float(np.clip(speed_integral + speed_error * dt, -0.05, 0.05))
                     throttle = float(np.clip(
                         THROTTLE_BASE + KP_V * speed_error + KI_V * speed_integral,

@@ -9,6 +9,13 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 1.2.1 - 2026-11-04
+- Smoother, more natural driving. The logs showed `target` jumping between 0.35 and 0.20 almost every line,
+  which made the motor push on and off. Now the target speed goes down SMOOTHLY with the steering angle
+  (`CURVE_START`, `CURVE_FULL`) and the speed command can only change slowly (`ACCEL` 0.25, `DECEL` 0.60 m/s^2).
+  Stops (lane lost, camera dead, obstacle) are still immediate.
+- Status: only simulated.
+
 ## 1.2.0 - 2026-11-02
 - New `--arm-m METERS`: the route is ignored until the odometer reaches this distance. Before that, every place
   where the yellow line ends is only reported (`*** Yellow line ended at odo=X m`). This lets the route start
