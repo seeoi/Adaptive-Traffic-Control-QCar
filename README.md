@@ -11,7 +11,7 @@ Traffic lights, V2I, multiple cars and external cameras come after that.
 | Path | What it is |
 | --- | --- |
 | `src/lane_follow.py` | **The script to use.** Follows the yellow center line with the front camera. |
-| `tools/` | Helper scripts that do not drive the car (for example `dump_map.py`). |
+| `tools/` | Helper scripts that do not drive the car: `dump_map.py` (map nodes), `where_am_i.py` (car position on the map). |
 | `run.ps1` | One command from the laptop: copies `lane_follow.py` to the car and runs it. |
 | `old/` | Earlier attempts, kept only for reference. Do not drive with them. |
 

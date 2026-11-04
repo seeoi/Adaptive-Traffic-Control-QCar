@@ -9,6 +9,10 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 1.2.2 - 2026-11-04
+- New `tools/where_am_i.py`: prints the car position (x, y, heading) from the LiDAR/map and the closest map node.
+  No driving. Use it to check if the old LiDAR calibration is right, before building map-based driving.
+
 ## 1.2.1 - 2026-11-04
 - Smoother, more natural driving. The logs showed `target` jumping between 0.35 and 0.20 almost every line,
   which made the motor push on and off. Now the target speed goes down SMOOTHLY with the steering angle
