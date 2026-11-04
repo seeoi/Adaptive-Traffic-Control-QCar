@@ -24,8 +24,8 @@ Dashed-line zones and the roundabout have NO yellow center line.
 - White dashed lines on the left lane and bottom-left where the road splits into two lanes.
 - Right-hand traffic. `SDCSRoadMap(leftHandTraffic=False)` from `hal.products.mats` holds the node poses and
   `generate_path(list_of_nodes)`. Example route from Quanser: [10, 4, 20, 10].
-- `tools/dump_map.py` prints all node poses (student must run it on the car; output `map_nodes.txt` was NOT
-  received yet). Ask for it.
+- Node poses (car 7 = qcar-67815): see CHANGELOG 2.0.0. Map picture scale: about 166 px per m,
+  px_x = 371 + 166 x, px_y = 45 + 166 (4.497 - y) on Quanser's 787x1000 mat picture.
 
 ## Hardware and software facts (measured on car 7 at 192.168.2.183, user/password nvidia)
 - `pal.products.qcar`: QCar (motorTach m/s, gyroscope[2] rad/s, write(throttle, steering)), QCarCameras, QCarLidar,
@@ -52,7 +52,7 @@ until an odometer distance. Results on the real car:
 - The trigger also fires on curves that hide the line. Starting a test where there is no yellow never triggers.
 - Not tested: `L`, `S` through a real intersection, `RB1..RB3`, the traffic-light hook, LiDAR obstacle stop.
 
-## Design recommended for the next version (not written yet)
+## Design recommended for the next version (WRITTEN as src/map_drive.py v2.0.0, not yet tested on the car)
 1. Pose estimate that does not depend on the room: wheel speed + gyro (QCarEKF or own) starting from a known
    map node and heading. Camera landmarks correct it (yellow line ended / corner marks / roundabout
    entry) so error does not grow over a lap.

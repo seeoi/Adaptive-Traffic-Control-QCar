@@ -9,6 +9,23 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.0.0 - 2026-11-04 (new program: `src/map_drive.py`)
+- NEW map-based driving. The route is a list of map nodes (`--route 9,13`); the Quanser road map turns it into a
+  path along the correct lane through intersections and the roundabout. The car tracks its own position with
+  wheel speed + gyro (dead reckoning) from the first node, and the camera corrects that estimate (sideways,
+  heading, and along the path in curves) whenever it sees the yellow line. Steering = pure pursuit on the
+  path, mixed 50/50 with the camera where the line is visible. Speed slows down BEFORE curves (read from the
+  map) with smooth acceleration. `--lidar` stops for objects ahead (not needed for position).
+- `--graph` prints every node and where it can go (LEFT / STRAIGHT / RIGHT). `--odotest` (motor off) measures
+  the wheel-sensor scale and the gyro sign by pushing the car. `--dry` keeps the motor off.
+- New `map.ps1`: copies `lane_follow.py` + `map_drive.py` to the car and runs `map_drive.py`.
+- Map facts (from `tools/dump_map.py` on car 7 = qcar-67815): 24 nodes, 42 edges. Central 4-way crossing near
+  (0.13, 0.97) m; from node 9 (coming from the west): LEFT = 13, STRAIGHT = 7, RIGHT = 0. Roundabout = nodes
+  16-19, counter-clockwise. Corner marks on the mat match nodes 11/12 and 0/1.
+- Simulated only: within 6-9 cm of the lane with correct calibration; 11-22 cm if the wheel sensor is 10% off,
+  so `TACH_SCALE` must be measured first. NOT tested on the real car.
+- `lane_follow.py` is unchanged (still 1.2.1) and still works on its own.
+
 ## 1.2.2 - 2026-11-04
 - New `tools/where_am_i.py`: prints the car position (x, y, heading) from the LiDAR/map and the closest map node.
   No driving. Use it to check if the old LiDAR calibration is right, before building map-based driving.

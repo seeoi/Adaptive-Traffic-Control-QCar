@@ -10,8 +10,10 @@ Traffic lights, V2I, multiple cars and external cameras come after that.
 
 | Path | What it is |
 | --- | --- |
-| `src/lane_follow.py` | **The script to use.** Follows the yellow center line with the front camera. |
+| `src/map_drive.py` | **New (2.0.0): drives a ROUTE of map nodes** using the map + wheels + gyro + camera. Run with `map.ps1`. |
+| `src/lane_follow.py` | Follows the yellow center line with the front camera only (also used by `map_drive.py`). |
 | `tools/` | Helper scripts that do not drive the car: `dump_map.py` (map nodes), `where_am_i.py` (car position on the map). |
+| `map.ps1` | One command from the laptop: copies both scripts to the car and runs `map_drive.py`. |
 | `run.ps1` | One command from the laptop: copies `lane_follow.py` to the car and runs it. |
 | `old/` | Earlier attempts, kept only for reference. Do not drive with them. |
 
@@ -39,6 +41,18 @@ Do **not** use `sudo`: it fails with a privileges error on our cars.
 Stop with **Ctrl+C**, never Ctrl+Z (Ctrl+Z only pauses it and leaves the camera locked: "GPIO is in use").
 To stop a stuck program from another terminal: `pkill -9 -f lane_follow.py`.
 To download debug pictures to the laptop: `scp -r nvidia@192.168.2.183:~/debug .`
+
+## Map driving (v2.0.0) - first tests, in this order
+
+All from the repo folder in PowerShell, laptop on the car Wi-Fi. Map node numbers: see `--graph`.
+1. `powershell -ExecutionPolicy Bypass -File .\map.ps1 --graph` - lists the nodes and where each can go.
+2. `... .\map.ps1 --odotest` - motor OFF. Push the car straight exactly 1.00 m (tape): `TACH_SCALE = 1.00 / distance`.
+   Then push it around a LEFT corner: the turn must be POSITIVE (else `GYRO_SIGN = -1`). Write both numbers at the
+   top of `src/map_drive.py`.
+3. `... .\map.ps1 --route 9,13 --dry` - motor OFF. Car on node 9 (lane coming from the west into the central
+   crossing). Push it through the LEFT turn to node 13; `off=` should stay within about 10 cm.
+4. `... .\map.ps1 --route 9,13` - the same, driving.
+5. Then a loop, for example `--route 10,4,20,10 --laps 3`.
 
 ## Full track: route and maneuvers (v1.1.0, needs calibration)
 
