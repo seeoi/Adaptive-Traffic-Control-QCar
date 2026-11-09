@@ -48,7 +48,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.2.0"
+VERSION = "2.2.1"
 
 # =============================================================================
 # SETTINGS
@@ -107,8 +107,11 @@ CAM_MIN_ROWS = 3       # The camera is "locked" when it sees the yellow line in 
 CAM_LOCK_S = 0.3       # ...for this long.
 CAM_M_PER_UNIT = 0.36  # Lane error 1.0 = this many meters sideways (lane half = 0.135 m = about 155 pixels).
 CAM_AHEAD = 0.40       # The camera measures the lane about this far in front of the car (m).
-CAM_GATE = 0.15        # Ignore a camera reading that disagrees with the estimate by more than this (m):
+CAM_GATE = 0.10        # Ignore a camera reading that disagrees with the estimate by more than this (m):
                        # it is probably another yellow line (for example at an intersection).
+NO_CAMERA_ZONES = [    # (x, y, radius in m): inside these circles the camera is NOT used (map only).
+    (1.576, 3.817, 1.30),  # Roundabout (center from nodes 16/17, lane radius 0.68 m). Its yellow traffic-island
+]                          # triangles fooled the camera and pushed the estimate off before the roundabout.
 CAM_STEER_MIX = 0.7    # 0 = map steering only, 1 = camera only (when the camera is trusted).
 KP_CAM = 0.9           # Camera steering strength (same idea as KP in lane_follow.py).
 FIX_LATERAL = 2.5      # How fast the camera corrects the sideways position (per second).
@@ -533,7 +536,8 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
 
                 locked = lock_since is not None and now - lock_since >= CAM_LOCK_S and lane_error is not None
                 trusted = False
-                if locked:
+                in_no_camera_zone = any((x - zx) ** 2 + (y - zy) ** 2 < zr ** 2 for zx, zy, zr in NO_CAMERA_ZONES)
+                if locked and not in_no_camera_zone:
                     camera_steer = float(-lf.STEER_SIGN * KP_CAM * lane_error)
                     # Where does the camera say the lane is, compared with where we think we are?
                     # Look at the point CAM_AHEAD in front of the car (that is what the camera sees).

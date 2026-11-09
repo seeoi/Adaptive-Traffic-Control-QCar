@@ -9,6 +9,17 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.2.1 - 2026-11-09
+- First full loop with the roundabout (`--route 22,9,13,19,17,20,22 --laps 2 --vmax 0.2`, 2.2.0): the left street, the
+  curve and the LEFT turn at the intersection were fine; it entered the roundabout and went around it, but about 15 cm
+  too far OUT (photo: at the outer edge of the mat) and was stopped there. In the log the estimate said it was on the
+  path the whole time inside the roundabout (2.5 m with no camera), so the error came from BEFORE: going up the
+  central street and the diagonal to the roundabout the camera pulled the estimate up to 10 cm to the side. Near the
+  roundabout there are yellow traffic-island triangles that can fool the yellow-line detector.
+- Camera corrections are now OFF inside `NO_CAMERA_ZONES` (a 1.3 m circle around the roundabout), and a camera reading
+  must agree with the estimate within 10 cm (`CAM_GATE` 0.15 -> 0.10).
+- Roundabout facts from the map: center (1.58, 3.82) m, lane radius 0.68 m (car 6 can turn 0.60 m to the left).
+
 ## 2.2.0 - 2026-11-09
 - `--circletest` on car 6 (slow, full lock): LEFT circle 0.60 m, RIGHT circle 0.84 m. Asking for 0.6 instead of 0.5
   gave the same circles (the car's own limit is 0.5). So the steering is NOT symmetric: real angle =
