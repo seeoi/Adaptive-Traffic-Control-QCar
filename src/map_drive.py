@@ -50,7 +50,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.7.0"
+VERSION = "2.7.1"
 
 # =============================================================================
 # SETTINGS
@@ -112,6 +112,8 @@ OFF_PATH_STOP = 0.40   # SAFETY: if the estimate is this far (m) from the path, 
 GPS_CAL_POSE = [0.0, 2.0, -np.pi / 2]  # Where the car stands for --gpscal: x=0, y=2 m, facing -90 deg (see README).
 GPS_GAIN = 0.15        # Each LiDAR position moves our estimate this part of the way toward it (0..1).
 GPS_GAIN_HEADING = 0.10
+GPS_DELAY = 0.0        # The LiDAR position is this old (s) when it arrives. It is compared with where WE thought
+                       # we were that long ago, not now (otherwise in curves it drags the car to the inside).
 GPS_GATE = 0.35        # Ignore a LiDAR position farther than this (m) from our estimate (a bad match).
 GPS_GATE_HEADING = 25  # ...or a heading more than this many degrees off.
 
@@ -594,6 +596,7 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time, use_gps=False):
     gps = open_gps() if use_gps else None
     gps_ok_at = -10.0          # Last time a LiDAR position was used.
     gps_x = gps_y = None
+    history = []               # (time, x, y, heading) of our estimate, to compare with the late LiDAR position.
 
     idx = 0                    # Index of the closest path point.
     steer = 0.0                # Steering sent to the wheels now.
@@ -691,12 +694,25 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time, use_gps=False):
                 if gps is not None and gps.readGPS():
                     gps_x, gps_y = float(gps.position[0]), float(gps.position[1])
                     gth = float(gps.orientation[2])
-                    if (np.hypot(gps_x - x, gps_y - y) < GPS_GATE
-                            and abs(wrap(gth - th)) < np.radians(GPS_GATE_HEADING)):
-                        x += GPS_GAIN * (gps_x - x)
-                        y += GPS_GAIN * (gps_y - y)
-                        th = wrap(th + GPS_GAIN_HEADING * wrap(gth - th))
+                    # Where did WE think we were when the LiDAR took this position?
+                    px, py, pth = x, y, th
+                    for t_h, hx, hy, hth in reversed(history):
+                        px, py, pth = hx, hy, hth
+                        if t_h <= now - GPS_DELAY:
+                            break
+                    ex, ey, eth = gps_x - px, gps_y - py, wrap(gth - pth)   # how wrong we were then
+                    if np.hypot(ex, ey) < GPS_GATE and abs(eth) < np.radians(GPS_GATE_HEADING):
+                        x += GPS_GAIN * ex
+                        y += GPS_GAIN * ey
+                        th = wrap(th + GPS_GAIN_HEADING * eth)
+                        # The same fix also applies to the saved past, so the next reading is not counted twice.
+                        history = [(t_h, hx + GPS_GAIN * ex, hy + GPS_GAIN * ey, wrap(hth + GPS_GAIN_HEADING * eth))
+                                   for t_h, hx, hy, hth in history]
                         gps_ok_at = now
+                if gps is not None:
+                    history.append((now, x, y, th))
+                    while history and history[0][0] < now - 1.0:
+                        history.pop(0)
                 idx = path.nearest(x, y, idx)
                 cte = path.cross_track(x, y, idx)
 

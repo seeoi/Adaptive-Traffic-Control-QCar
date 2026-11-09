@@ -9,6 +9,14 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.7.1 - 2026-11-09
+- First loop with `--gps` (2.7.0) on car 7: the whole loop worked, LiDAR start 1 cm from node 22 ("lo hizo muy bien").
+  Only issue: before the LEFT turn at the central crossing the car rode on the yellow line. The log shows the car 4-7 cm
+  to the INSIDE of every curve (left in left curves, right in the right curve) - probably because the LiDAR position
+  arrives a little late, so in a curve it says the car is less turned than it is.
+- New: `GPS_DELAY` - each LiDAR position is compared with where we thought we were that long ago (saved history of the
+  last 1 s), not with now. Default 0.0 (no change yet) until the delay is measured from the CSV (gps_x/gps_y vs x/y).
+
 ## 2.7.0 - 2026-11-09
 - Car 7 loop with 2.6.3: same problem - after the first LEFT curve the car was nearly in the middle of the street, and
   too far left in the curve before the roundabout, while the estimate said off=0 cm. Wheels + gyro + camera are not
