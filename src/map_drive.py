@@ -48,7 +48,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.0.1"
+VERSION = "2.0.2"
 
 # =============================================================================
 # SETTINGS
@@ -88,12 +88,12 @@ CAM_MIN_ROWS = 3       # The camera is "locked" when it sees the yellow line in 
 CAM_LOCK_S = 0.3       # ...for this long.
 CAM_M_PER_UNIT = 0.36  # Lane error 1.0 = this many meters sideways (lane half = 0.135 m = about 155 pixels).
 CAM_AHEAD = 0.40       # The camera measures the lane about this far in front of the car (m).
-CAM_GATE = 0.12        # Ignore a camera reading that disagrees with the estimate by more than this (m):
+CAM_GATE = 0.15        # Ignore a camera reading that disagrees with the estimate by more than this (m):
                        # it is probably another yellow line (for example at an intersection).
-CAM_STEER_MIX = 0.5    # 0 = map steering only, 1 = camera only (when the camera is trusted).
+CAM_STEER_MIX = 0.7    # 0 = map steering only, 1 = camera only (when the camera is trusted).
 KP_CAM = 0.9           # Camera steering strength (same idea as KP in lane_follow.py).
-FIX_LATERAL = 1.5      # How fast the camera corrects the sideways position (per second).
-FIX_HEADING = 1.5      # How fast the camera corrects the heading (per second).
+FIX_LATERAL = 2.5      # How fast the camera corrects the sideways position (per second).
+FIX_HEADING = 2.5      # How fast the camera corrects the heading (per second).
 FIX_ALONG = 1.0        # How fast the position ALONG the path is corrected in curves (per second).
 
 RUN_TIME = 120         # SAFETY: the program stops by itself after this many seconds.

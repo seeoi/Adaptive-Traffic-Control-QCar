@@ -9,6 +9,17 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.0.2 - 2026-11-09
+- First real test, `--route 9,13 --dry` on car 6 (pushed by hand, wheels steering by themselves): the left turn
+  had the right shape, but the car ended about 10 cm too far LEFT (close to the yellow line) while the estimate
+  said +2..6 cm. Likely cause: the car was placed a little behind node 9 or turned a few degrees, and on this
+  short route the camera saw no yellow line until the turn was almost done (yellow 0/5 until s = 0.9 m), so it
+  could not fix the start error in time.
+- The camera now has more say when it sees the line: `CAM_STEER_MIX` 0.5 -> 0.7, `CAM_GATE` 0.12 -> 0.15 m,
+  `FIX_LATERAL` and `FIX_HEADING` 1.5 -> 2.5.
+- Test advice: start routes on a road WITH a yellow line before the intersection (for example `22,9,13`), so
+  the camera fixes the start position before the turn.
+
 ## 2.0.1 - 2026-11-09
 - Calibrated on car 6 (qcar-67815) with `--odotest`: pushed 1.00 m -> wheel sensor 1.01 m, so `TACH_SCALE = 1.0` is right.
   A left turn read +92 deg, so `GYRO_SIGN = +1` is right.
