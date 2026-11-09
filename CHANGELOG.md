@@ -15,6 +15,11 @@ Version numbers: `MAJOR.MINOR.PATCH`
   the start ("lo hizo muy bien"). Only issue: slightly wide (outside) in the roundabout; the steering is close to its left
   limit there (+0.49 of 0.50). The start check did not run (the camera saw the line in only 3 of 5 rows).
 
+## 2.6.1 - 2026-11-09
+- Car 7 = qcar-67807 (192.168.2.45) measured: 1.00 m pushed -> 1.00 m (TACH_SCALE 1.0); full-lock circles LEFT 0.63 m,
+  RIGHT 0.77 m (car 6: 0.60 / 0.84). Less lopsided than car 6. Profile: STEER_SCALE 0.707, STEER_BIAS 0.032,
+  MIN_RADIUS_LEFT 0.69, MIN_RADIUS_RIGHT 0.84.
+
 ## 2.6.0 - 2026-11-09
 - Per-car profiles (`CAR_PROFILES`, chosen by the car's hostname): car 6 = qcar-67815 keeps its measured steering
   (left 0.60 m / right 0.84 m). Other cars use the defaults until measured with `--odotest` and `--circletest`.
