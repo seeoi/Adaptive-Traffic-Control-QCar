@@ -50,7 +50,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.7.1"
+VERSION = "2.7.2"
 
 # =============================================================================
 # SETTINGS
@@ -112,6 +112,8 @@ OFF_PATH_STOP = 0.40   # SAFETY: if the estimate is this far (m) from the path, 
 GPS_CAL_POSE = [0.0, 2.0, -np.pi / 2]  # Where the car stands for --gpscal: x=0, y=2 m, facing -90 deg (see README).
 GPS_GAIN = 0.15        # Each LiDAR position moves our estimate this part of the way toward it (0..1).
 GPS_GAIN_HEADING = 0.10
+GPS_OFFSET = 0.16      # The LiDAR position is this far (m) IN FRONT of the rear axle (our "car position").
+                       # Measured on car 7 (2.7.2): without it the car cut every curve to the inside by 5-8 cm.
 GPS_DELAY = 0.0        # The LiDAR position is this old (s) when it arrives. It is compared with where WE thought
                        # we were that long ago, not now (otherwise in curves it drags the car to the inside).
 GPS_GATE = 0.35        # Ignore a LiDAR position farther than this (m) from our estimate (a bad match).
@@ -550,6 +552,13 @@ def gps_calibrate():
     print("Calibration done. Now check it with --whereami.")
 
 
+def read_gps_pose(gps):
+    """LiDAR position moved back to the rear axle: (x, y, heading)."""
+    gth = float(gps.orientation[2])
+    return (float(gps.position[0]) - GPS_OFFSET * np.cos(gth),
+            float(gps.position[1]) - GPS_OFFSET * np.sin(gth), gth)
+
+
 def where_am_i(seconds=30):
     """Motor OFF. Print the LiDAR position 5 times per second and the closest map node."""
     roadmap = SDCSRoadMap(leftHandTraffic=False)
@@ -563,7 +572,7 @@ def where_am_i(seconds=30):
         while time.time() < t_end:
             if gps.readGPS() and time.time() - t_print > 0.2:
                 t_print = time.time()
-                gx, gy, gth = float(gps.position[0]), float(gps.position[1]), float(gps.orientation[2])
+                gx, gy, gth = read_gps_pose(gps)
                 best = min(nodes, key=lambda n: (nodes[n][0] - gx) ** 2 + (nodes[n][1] - gy) ** 2)
                 bx, by, bth = nodes[best]
                 print(f"x={gx:+.2f} y={gy:+.2f} heading={np.degrees(gth):+6.1f} deg | closest node {best}: "
@@ -634,8 +643,7 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time, use_gps=False):
                 n += 1
                 qcar.write(throttle=0, steering=0)
                 if gps is not None and gps.readGPS():
-                    start_gps.append((float(gps.position[0]), float(gps.position[1]),
-                                      float(gps.orientation[2])))
+                    start_gps.append(read_gps_pose(gps))
                 if use_camera:
                     frame = lf.grab_frame(cameras)
                     if frame is not None:
@@ -692,8 +700,7 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time, use_gps=False):
                 y += speed * np.sin(th) * dt
                 # ---- 2b) LiDAR POSITION: pull the estimate toward it (no drift) ------
                 if gps is not None and gps.readGPS():
-                    gps_x, gps_y = float(gps.position[0]), float(gps.position[1])
-                    gth = float(gps.orientation[2])
+                    gps_x, gps_y, gth = read_gps_pose(gps)
                     # Where did WE think we were when the LiDAR took this position?
                     px, py, pth = x, y, th
                     for t_h, hx, hy, hth in reversed(history):

@@ -9,6 +9,15 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.7.2 - 2026-11-09
+- Measured from the CSV of the first `--gps` loop: the LiDAR position is NOT late (along the road it matched the wheels,
+  0.4 cm), but it is about 16 cm IN FRONT of the rear axle (the point our car model uses). Proof: in curves the LiDAR
+  point moved 12 deg more to the inside than the car heading (left curves +12, right -5); moving the point back
+  0.15-0.20 m makes that 0-2 deg. Without this, the estimate and the LiDAR fought in every curve and the car cut the
+  curves to the inside by 5-8 cm (on the yellow line before the left turn at the crossing).
+- Fix: `GPS_OFFSET` 0.16 m - every LiDAR position is moved back to the rear axle (start pose, driving, --whereami).
+  `GPS_DELAY` stays 0.
+
 ## 2.7.1 - 2026-11-09
 - First loop with `--gps` (2.7.0) on car 7: the whole loop worked, LiDAR start 1 cm from node 22 ("lo hizo muy bien").
   Only issue: before the LEFT turn at the central crossing the car rode on the yellow line. The log shows the car 4-7 cm
