@@ -48,7 +48,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.0.6"
+VERSION = "2.0.7"
 
 # =============================================================================
 # SETTINGS
@@ -96,7 +96,9 @@ CAM_GATE = 0.15        # Ignore a camera reading that disagrees with the estimat
 CAM_STEER_MIX = 0.7    # 0 = map steering only, 1 = camera only (when the camera is trusted).
 KP_CAM = 0.9           # Camera steering strength (same idea as KP in lane_follow.py).
 FIX_LATERAL = 2.5      # How fast the camera corrects the sideways position (per second).
-FIX_HEADING = 2.5      # How fast the camera corrects the heading (per second).
+ALIGN_HEADING = 0.5    # On a STRAIGHT road, while the camera keeps the car centered, slowly turn the heading
+                       # estimate toward the road direction (per second). The gyro itself is very accurate
+                       # (one full turn by hand read 359.3 deg), so this only removes the start error.
 
 RUN_TIME = 120         # SAFETY: the program stops by itself after this many seconds.
 RATE_HZ = 200
@@ -371,8 +373,14 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                     # a) Sideways: move the estimate toward what the camera measured.
                     x += FIX_LATERAL * cam_dt * innovation * -np.sin(h)
                     y += FIX_LATERAL * cam_dt * innovation * np.cos(h)
-                    # b) Heading: if the point ahead is off, the car is pointing a bit wrong.
-                    th = wrap(th + FIX_HEADING * cam_dt * innovation / CAM_AHEAD)
+                    # b) Heading: NOT taken from the camera's sideways reading any more (2.0.7). A small fixed
+                    #    offset in the camera reading turned into a heading error of several degrees, and
+                    #    the car drove straight through the intersection at an angle. Instead: on a straight
+                    #    road, when the car is centered and not steering, it must point along the road.
+                    i_lo, i_hi = path.index_at(path.s[idx] - 0.4), path.index_at(path.s[idx] + 0.4)
+                    straight_road = abs(wrap(path.heading[i_hi] - path.heading[i_lo])) < np.radians(5)
+                    if straight_road and abs(lane_error) < 0.10 and abs(steer) < 0.10:
+                        th = wrap(th + ALIGN_HEADING * cam_dt * wrap(path.heading[idx] - th))
                     # (No correction ALONG the path: the wheel sensor is accurate to about 1 %, and the old
                     #  along-path correction froze the estimate when the car was off course - v2.0.4.)
                     steer_target = (1 - CAM_STEER_MIX) * map_steer + CAM_STEER_MIX * camera_steer

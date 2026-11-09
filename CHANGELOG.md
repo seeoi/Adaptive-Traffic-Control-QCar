@@ -9,6 +9,17 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.0.7 - 2026-11-09
+- Real test `--route 22,9,7` (straight through the intersection): fine until the curve ended, then in the
+  intersection (no yellow line) the car drove at about 8-10 deg to the RIGHT while it believed it was going
+  straight (estimate heading 0..+2 deg, 1 cm off), and left the track on the right.
+- Gyro checked by hand: one full turn = 359.3 deg, so the gyro is accurate. The heading error came from the camera
+  correction: the heading was nudged by the camera's sideways reading, so a small fixed offset in that reading
+  (a few cm) became a heading error of several degrees (offset / 0.4 m).
+- Fix: the camera no longer changes the heading that way. The heading comes from the gyro; it is only aligned
+  with the road on STRAIGHT road while the camera sees the car centered and the wheels are almost straight
+  (`ALIGN_HEADING`). Simulated with a 4 cm camera offset: within 10 cm. Not tested on the car yet.
+
 ## 2026-11-09 - FIRST SUCCESSFUL MAP DRIVE (2.0.6, car 6)
 - `--route 22,9,13 --vmax 0.2` with the motor: drove down the left street, the curve, crossed the intersection and
   turned LEFT into the correct lane, stopping at node 13 ("lo hizo perfecto"). Speed steady at 0.18-0.22 m/s
