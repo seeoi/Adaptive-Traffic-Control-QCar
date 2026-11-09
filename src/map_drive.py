@@ -48,7 +48,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.0.4"
+VERSION = "2.0.5"
 
 # =============================================================================
 # SETTINGS
@@ -71,16 +71,14 @@ A_LAT = 0.20           # Allowed sideways acceleration in a curve (m/s^2). Lower
 PREVIEW = 0.80         # How far ahead (m) the car looks for curves to slow down in time.
 ACCEL = 0.25           # Speed may grow by at most this much per second.
 DECEL = 0.50           # Speed may drop by at most this much per second (stops are immediate).
-THROTTLE_FF0 = 0.045   # Motor push needed to keep rolling slowly (feed-forward).
-THROTTLE_FF1 = 0.08    # Extra push per m/s of speed (feed-forward). Lowered in 2.0.4: the car ran away.
-OVERSPEED = 0.06       # If the car is this much faster than wanted (m/s), cut the motor until it slows.
-STALL_S = 0.6          # If the car should move but has been stopped this long...
-STALL_PUSH = 0.03      # ...add this much extra push (it grows slowly while stalled).
+THROTTLE_BASE = 0.07   # Fixed motor push while driving. This is what gave the smooth lap in lane_follow 1.0.2.
+                       # (2.0.3/2.0.4 used a big speed controller: the car stalled, then surged to 0.6 m/s.)
+OVERSPEED = 0.15       # Only if the car is this much faster than wanted (m/s), cut the motor.
 V_LOST = 0.15          # Drive this slowly when the estimate is far from the path (unsure where we are).
 UNSURE_M = 0.10        # "Far from the path" = more than this many meters.
-KP_V = 0.15            # Speed correction (proportional).
-KI_V = 0.30            # Speed correction (accumulated).
-MAX_THROTTLE = 0.15    # Hard limit of the motor command. Never negative (negative = reverse).
+KP_V = 0.10            # Small speed correction (proportional), same as lane_follow.
+KI_V = 0.30            # Small speed correction (accumulated), same as lane_follow.
+MAX_THROTTLE = 0.11    # Hard limit of the motor command. Never negative (negative = reverse).
 
 # ---- Path following ------------------------------------------------------------
 LOOKAHEAD_MIN = 0.30   # Pure pursuit looks this far ahead at low speed (m)...
@@ -229,6 +227,38 @@ def odo_test(seconds=60):
     print("If you pushed exactly 1.00 m: TACH_SCALE = 1.00 / distance. Left turn must be POSITIVE.")
 
 
+def motor_test():
+    """WHEELS IN THE AIR (car on a box). Sends a few fixed motor pushes and prints what the wheel sensor says.
+
+    It shows: the smallest push that turns the wheels, the speed for each push, and how long the wheel
+    sensor takes to react after the push changes (look at the time column).
+    """
+    steps = [(0.00, 2.0), (0.06, 3.0), (0.07, 3.0), (0.08, 3.0), (0.00, 3.0)]
+    qcar = QCar(readMode=1, frequency=RATE_HZ)
+    stop = threading.Event()
+    signal.signal(signal.SIGINT, lambda *_: stop.set())
+    print("The car must be ON A BOX with the wheels in the air. Starting in 3 seconds...")
+    time.sleep(3)
+    with qcar:
+        t0 = t_print = time.time()
+        loops = 0
+        for push, seconds in steps:
+            t_step = time.time()
+            print(f"--- push {push:.2f} for {seconds:.0f} s ---")
+            while not stop.is_set() and time.time() - t_step < seconds:
+                now = time.time()
+                qcar.read()
+                qcar.write(throttle=push, steering=0)
+                loops += 1
+                if now - t_print >= 0.1:
+                    hz = loops / (now - t_print)
+                    loops, t_print = 0, now
+                    print(f"t={now - t0:5.1f}s push={push:.2f} wheel_speed={float(qcar.motorTach):+.3f} m/s loop={hz:.0f}Hz")
+                time.sleep(max(0.0, 1.0 / RATE_HZ - (time.time() - now)))
+        qcar.write(throttle=0, steering=0)
+    print("Done. Send this text.")
+
+
 # =============================================================================
 # MAIN: drive the route
 # =============================================================================
@@ -257,7 +287,7 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
     steer = 0.0                # Steering sent to the wheels now.
     speed_cmd = 0.0            # Smoothed speed command.
     speed_integral = 0.0
-    stalled_for = 0.0          # How long the car has been stuck at zero speed while it should move.
+    loops = 0                  # Loop counter, to print how many loops per second we run.
     throttle = 0.0
     gyro_bias = 0.0
     lock_since = None          # Since when the camera sees the yellow line well.
@@ -381,11 +411,7 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                     if blocked:
                         v_target, mode = 0.0, mode + "+OBSTACLE"
 
-                # ---- 5) THROTTLE: smooth speed command + feed-forward + small PI -----
-                if speed < 0.03 and v_target > 0.0:
-                    stalled_for += dt
-                else:
-                    stalled_for = 0.0
+                # ---- 5) THROTTLE: fixed base push + small correction (like lane_follow) ---
                 if v_target <= 0.0:
                     speed_cmd, speed_integral, throttle = 0.0, 0.0, 0.0
                 else:
@@ -394,9 +420,7 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                     speed_cmd += float(np.clip(v_target - speed_cmd, -DECEL * dt, ACCEL * dt))
                     error = speed_cmd - speed
                     speed_integral = float(np.clip(speed_integral + error * dt, -0.05, 0.05))
-                    feed_forward = THROTTLE_FF0 + THROTTLE_FF1 * speed_cmd / TACH_SCALE
-                    stall_extra = STALL_PUSH * min(stalled_for / STALL_S, 2.0) if stalled_for > STALL_S else 0.0
-                    throttle = float(np.clip(feed_forward + KP_V * error + KI_V * speed_integral + stall_extra,
+                    throttle = float(np.clip(THROTTLE_BASE + KP_V * error + KI_V * speed_integral,
                                              0.0, MAX_THROTTLE))
                     if speed > v_target + OVERSPEED:
                         throttle = 0.0                       # Too fast: let it roll and slow down.
@@ -414,12 +438,19 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                               "" if camera_steer is None else f"{camera_steer:+.3f}",
                               "" if lane_error is None else f"{lane_error:+.3f}", yellow_rows, mode,
                               "" if not np.isfinite(front) else f"{front:.2f}"])
+                loops += 1
                 if now - t_print > 1.0 / PRINT_HZ:
+                    loop_hz = loops / max(now - t_print, 1e-3) if t_print else 0.0
+                    loops = 0
                     t_print = now
                     print(f"{now - t_start:6.1f}s {mode:<16} x={x:+.2f} y={y:+.2f} "
                           f"head={np.degrees(th):+5.0f} s={path.s[idx]:5.2f}/{path.length:.1f}m "
                           f"off={cte * 100:+4.0f}cm speed={speed:.2f}/{v_target:.2f} thr={throttle:.3f} "
-                          f"steer={steer:+.2f} yellow={yellow_rows}/5")
+                          f"steer={steer:+.2f} yellow={yellow_rows}/5 loop={loop_hz:.0f}Hz")
+                # Keep a steady loop rate (do not flood the car with commands).
+                spare = 1.0 / RATE_HZ - (time.time() - now)
+                if spare > 0:
+                    time.sleep(spare)
             qcar.write(throttle=0, steering=0)
     finally:
         if cameras is not None:
@@ -436,6 +467,7 @@ if __name__ == "__main__":
     parser.add_argument("--laps", type=int, default=1, help="laps for a loop route (first node = last node)")
     parser.add_argument("--graph", action="store_true", help="print the nodes and where each can go, then exit")
     parser.add_argument("--odotest", action="store_true", help="motor OFF: push the car, see distance and turn")
+    parser.add_argument("--motortest", action="store_true", help="WHEELS IN THE AIR: fixed motor pushes, prints wheel speed")
     parser.add_argument("--dry", action="store_true", help="motor OFF: push the car along the route")
     parser.add_argument("--lidar", action="store_true", help="stop for objects in front")
     parser.add_argument("--nocam", action="store_true", help="do not use the camera (map only)")
@@ -451,6 +483,8 @@ if __name__ == "__main__":
         print_graph(SDCSRoadMap(leftHandTraffic=False))
     elif args.odotest:
         odo_test()
+    elif args.motortest:
+        motor_test()
     else:
         route = [int(n) for n in args.route.split(",")]
         drive(route, args.laps, args.dry, args.lidar, USE_CAMERA and not args.nocam, args.time)

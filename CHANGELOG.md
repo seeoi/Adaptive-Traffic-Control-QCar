@@ -9,6 +9,18 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.0.5 - 2026-11-09
+- Motor test of 2.0.4 (`--route 22,9,13 --vmax 0.2`): still stop-and-surge. The log shows the wheel speed staying at
+  0 for about 1 s while the push rose to 0.15, then the car surging to 0.6-0.68 m/s while the push was already 0.
+  So the motor (or the wheel sensor) reacts LATE, and a strong speed controller makes it worse. At the intersection the
+  car went off the track to the right.
+- Throttle is back to what worked in lane_follow 1.0.2: fixed push `THROTTLE_BASE` 0.07 + small correction
+  (`KP_V` 0.10, `KI_V` 0.30), max push 0.11, no "stuck" boost; the motor is cut only above target + 0.15 m/s.
+- The main loop now runs at a steady 200 Hz (before it ran as fast as possible and flooded the car with commands,
+  which may add delay). The status line shows `loop=..Hz`.
+- New `--motortest` (car ON A BOX, wheels in the air): fixed pushes 0, 0.06, 0.07, 0.08, 0 and prints the wheel
+  speed every 0.1 s, to measure the dead zone and the delay.
+
 ## 2.0.4 - 2026-11-09
 - First MOTOR test, `--route 22,9,13 --vmax 0.25` on car 6: the street and the curve were fine (camera locked,
   estimate within +-7 cm), but at the intersection it went wrong. Problems seen in the log:
