@@ -9,6 +9,11 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.0.6 / lane_follow 1.2.3 - 2026-11-09
+- `--motortest` again with `READ_MODE = 0`: the wheel speed now reacts within 0.1 s (0.06 -> 0.24 m/s,
+  0.07 -> 0.31 m/s, 0.08 -> 0.37 m/s, push 0 -> stopped at once; wheels in the air). The 2 s lag is gone.
+- `lane_follow.py` 1.2.3: same fix (`readMode=0`). Its old speed overshoots were probably the same lag.
+
 ## 2.0.6 - 2026-11-09
 - `--motortest` (car 6, wheels in the air) found the real cause of the stop-and-surge: every change of the motor push
   showed up in the wheel speed exactly 2.0-2.1 s LATER (0.06 at 2.0 s -> speed at 4.1 s; 0.07 at 5.0 -> 7.1;

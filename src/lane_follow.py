@@ -54,7 +54,7 @@ from pal.products.qcar import QCar, QCarCameras, QCarLidar
 # Version of THIS file. It is printed every time the script starts, so you can
 # always tell which version is running on the car. Change it with every edit and
 # write the change in CHANGELOG.md (see the "Versions" section of the README).
-VERSION = "1.2.1"
+VERSION = "1.2.3"
 
 # =============================================================================
 # SETTINGS  (the numbers you will most likely want to change are at the top)
@@ -474,7 +474,7 @@ def drive(use_lidar, dry_run, run_time=RUN_TIME, route=None, turntest=None, arm_
     lidar = LidarWatcher() if use_lidar else None
     if lidar:
         lidar.start()
-    qcar = QCar(readMode=1, frequency=RATE_HZ)
+    qcar = QCar(readMode=0, frequency=RATE_HZ)   # 0 = latest readings (mode 1 lagged 2 s)
 
     # ---- Variables that change while driving ----
     state = "DRIVE"            # DRIVE, LOST (no lane), or STOP_LINE (waiting for green).
