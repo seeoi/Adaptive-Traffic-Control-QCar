@@ -48,7 +48,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.5.0"
+VERSION = "2.5.1"
 
 # =============================================================================
 # SETTINGS
@@ -123,7 +123,8 @@ ALIGN_HEADING = 0.5    # On a STRAIGHT road, while the camera keeps the car cent
                        # estimate toward the road direction (per second). The gyro itself is very accurate
                        # (one full turn by hand read 359.3 deg), so this only removes the start error.
 
-LINK_TIMEOUT = 2.0     # SAFETY: stop if the laptop has not confirmed our messages for this many seconds.
+LINK_TIMEOUT = 4.0     # SAFETY: stop if the laptop has not confirmed our messages for this many seconds
+LINK_MIN_BYTES = 1500  # ...and at least this much text is waiting (slow Wi-Fi alone must not stop the car).
 RUN_TIME = 120         # SAFETY: the program stops by itself after this many seconds.
 RATE_HZ = 200
 READ_MODE = 0          # 0 = read the sensors NOW (latest values). Mode 1 keeps a queue of old readings:
@@ -166,7 +167,8 @@ class LinkWatch:
                     self.stuck_since = self.stuck_since or now
                 else:
                     self.stuck_since = None
-                return self.stuck_since is not None and now - self.stuck_since > timeout
+                return (self.stuck_since is not None and now - self.stuck_since > timeout
+                        and waiting >= LINK_MIN_BYTES)
         return False
 
 

@@ -15,6 +15,12 @@ Version numbers: `MAJOR.MINOR.PATCH`
   the start ("lo hizo muy bien"). Only issue: slightly wide (outside) in the roundabout; the steering is close to its left
   limit there (+0.49 of 0.50). The start check did not run (the camera saw the line in only 3 of 5 rows).
 
+## 2.5.1 - 2026-11-09
+- Test of 2.5.0: `Lost the connection to the laptop` stopped the car in the roundabout at 32 s although the laptop was
+  still connected (slow Wi-Fi). LinkWatch now needs 4 s (was 2 s) AND at least 1500 bytes waiting.
+- Same test: left turn good; slightly on the yellow line before the intersection and before the roundabout; entering
+  the roundabout it cut over the inner island. The camera was still used only for 0.6 s (the start straight).
+
 ## 2.5.0 - 2026-11-09
 - Test of 2.4.1 (1 lap): the estimate stayed within 3 cm of the path the WHOLE lap, but the camera was used ZERO times
   (no `MAP+CAM` in the log). The real car drifted away from the estimate: left turn exit to the right, before the
