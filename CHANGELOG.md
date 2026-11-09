@@ -9,6 +9,12 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.7.4 - 2026-11-09
+- Loop with 2.7.3 (car 7): left turn at the crossing perfect, roundabout perfect. But the right curve before the
+  roundabout now went too far LEFT (on the yellow line), and after the roundabout exit half the car was out of the
+  street. The trims made it worse (steering hit the limit -0.50 in the trimmed right curve). `LANE_TRIMS` emptied again
+  (= 2.7.2). Next: measure the real position from an overhead video of a lap instead of guessing.
+
 ## 2.7.3 - 2026-11-09
 - Two `--gps` loops with 2.7.2 (car 7): left turn at the crossing now fine; "the rest in the lanes", roundabout good.
   Still: in the right curve before the roundabout the car went too far RIGHT, and at the roundabout exit (top street)
