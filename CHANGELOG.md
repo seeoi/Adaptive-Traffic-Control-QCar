@@ -9,6 +9,19 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.1.0 - 2026-11-09
+- The logs (map_003619/003823/004225.csv) showed the real problem of the right turn: at full lock (-0.50) car 6
+  drives a circle of only 0.80-0.84 m radius, but the map's right turn at the central intersection is about 0.72 m.
+  The car cannot follow it, so it goes wide, and the outside of a right turn is the yellow line. In straight parts the
+  camera and the estimate agree within a few cm, so the camera was not the cause.
+- New: before driving, every map corner tighter than `MIN_RADIUS` (0.90 m) is replaced by an arc of that radius
+  touching the same entry and exit road (start the turn a bit earlier, cut the corner a bit). For the 90 deg right
+  turn the middle of the turn moves about 7 cm to the inside. The program prints how far the path was moved.
+  The roundabout (about 0.6 m) is NOT changed this way; it will need its own solution.
+- `TIGHT_EXTRA` (2.0.8) set to 0, the reshaped corner replaces it.
+- New `--circletest`: drives slow full-lock circles left and right and prints the real radius (needs 2 x 2 m of
+  free floor).
+
 ## 2.0.10 - 2026-11-09
 - Undid 2.0.9: in the simulator, trusting the camera less made the car WORSE (12-15 cm instead of 8-10 cm), even with
   a biased camera. Back to `CAM_STEER_MIX` 0.7 and `FIX_LATERAL` 2.5 until the real logs (map_*.csv) show the cause.

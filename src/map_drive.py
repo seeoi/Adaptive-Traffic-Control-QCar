@@ -48,7 +48,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.0.10"
+VERSION = "2.1.0"
 
 # =============================================================================
 # SETTINGS
@@ -83,9 +83,12 @@ MAX_THROTTLE = 0.11    # Hard limit of the motor command. Never negative (negati
 # ---- Path following ------------------------------------------------------------
 LOOKAHEAD_MIN = 0.30   # Pure pursuit looks this far ahead at low speed (m)...
 LOOKAHEAD_GAIN = 0.60  # ...plus this many meters per m/s of speed.
+MIN_RADIUS = 0.90      # Corners are made at least this wide (m). Car 6 at full lock really drives 0.80-0.84 m;
+                       # the extra 6-10 cm leaves the steering some room to correct.
+                       # Map corners tighter than this are reshaped before driving (see smooth_tight_corners).
 TIGHT_CURV = 1.0       # A curve tighter than this (1/m, = radius under 1 m) is too tight for our car
                        # (smallest circle about 0.85 m). Then the car looks farther ahead so it starts
-TIGHT_EXTRA = 0.15     # turning a bit earlier (m added to the look-ahead) and does not swing wide.
+TIGHT_EXTRA = 0.0      # turning a bit earlier (m added to the look-ahead) and does not swing wide.
 OFF_PATH_STOP = 0.40   # SAFETY: if the estimate is this far (m) from the path, stop.
 
 # ---- Camera corrections ----------------------------------------------------------
@@ -150,6 +153,101 @@ def print_graph(roadmap):
         print(f"{i:2d}: ({x:+.2f}, {y:+.2f}) {np.degrees(h):+5.0f} deg  ->  {', '.join(exits) or 'no data'}")
 
 
+def curvature_of(points):
+    """Curvature (1/m) at every point of a polyline, smoothed over about 10 cm."""
+    step = np.hypot(*np.diff(points, axis=0).T)
+    d = np.diff(points, axis=0)
+    heading = np.arctan2(d[:, 1], d[:, 0])
+    heading = np.r_[heading, heading[-1]]
+    dh = np.r_[0.0, wrap(np.diff(heading))] / np.maximum(np.r_[1e-3, step], 1e-3)
+    return np.convolve(dh, np.ones(9) / 9, mode="same")
+
+
+def resample(points, spacing=0.01):
+    """Put the points back at an even spacing (1 cm)."""
+    s = np.r_[0.0, np.cumsum(np.hypot(*np.diff(points, axis=0).T))]
+    new_s = np.arange(0.0, s[-1], spacing)
+    if s[-1] - new_s[-1] < spacing / 2:
+        new_s[-1] = s[-1]                # Last point is very close to the end: move it to the end.
+    else:
+        new_s = np.r_[new_s, s[-1]]      # Otherwise add the end point.
+    return np.c_[np.interp(new_s, s, points[:, 0]), np.interp(new_s, s, points[:, 1])]
+
+
+def smooth_tight_corners(points, min_radius=MIN_RADIUS):
+    """Reshape corners that are tighter than the car can turn.
+
+    The map's right turns (about 0.7 m radius) are tighter than our car's smallest circle (about 0.82 m).
+    If the car tries to follow them it goes wide and ends on the yellow line. Here each such corner is
+    replaced by a circle arc of radius `min_radius` that touches the same entry road and exit road, like a
+    driver who starts the turn a little earlier and cuts the corner a little. For a 90 degree corner the
+    middle of the turn moves only about 6 cm to the inside. Returns (new_points, biggest_shift_m).
+    """
+    limit = 1.0 / min_radius
+    curv = np.abs(curvature_of(points))
+    n = len(points)
+    d = np.diff(points, axis=0)
+    heading = np.r_[np.arctan2(d[:, 1], d[:, 0]), np.arctan2(d[-1, 1], d[-1, 0])]
+    pieces, start, i, shift = [], 0, 0, 0.0
+    while i < n:
+        if curv[i] <= limit:
+            i += 1
+            continue
+        # Found a corner that is too tight. Walk back and forward to where the road is nearly straight.
+        i0 = i
+        while i0 > start and curv[i0] > 0.25 and i - i0 < 80:
+            i0 -= 1
+        i1 = i
+        while i1 < n - 1 and (curv[i1] > 0.25 or np.any(curv[i1:min(i1 + 15, n)] > limit)) and i1 - i < 300:
+            i1 += 1
+        # Go a bit further along the straight roads on both sides (up to 0.5 m), so the bigger arc fits.
+        for _ in range(50):
+            if i0 > start and curv[i0 - 1] < 0.3:
+                i0 -= 1
+            if i1 < n - 2 and curv[i1 + 1] < 0.3:
+                i1 += 1
+        turn = wrap(heading[i1] - heading[i0])
+        u0 = np.array([np.cos(heading[i0]), np.sin(heading[i0])])
+        u1 = np.array([np.cos(heading[i1]), np.sin(heading[i1])])
+        cross = u0[0] * u1[1] - u0[1] * u1[0]
+        if abs(turn) > np.radians(150) or abs(cross) < 1e-3:
+            i = i1 + 1                       # U-turn or roundabout: cannot fix it this way.
+            continue
+        # Corner point V where the entry road line and the exit road line meet.
+        p0, p1 = points[i0], points[i1]
+        t0 = ((p1[0] - p0[0]) * u1[1] - (p1[1] - p0[1]) * u1[0]) / cross
+        vertex = p0 + t0 * u0
+        t1 = float(np.dot(p1 - vertex, u1))
+        # Arc of radius R touching both lines: it starts R*tan(turn/2) before the corner point.
+        radius = min_radius
+        tangent = radius * np.tan(abs(turn) / 2)
+        room = min(t0, t1)
+        if room <= 0:
+            i = i1 + 1
+            continue
+        if tangent > room:                   # Not enough straight road: use the biggest arc that fits.
+            tangent, radius = room, room / np.tan(abs(turn) / 2)
+        a_pt = vertex - tangent * u0
+        b_pt = vertex + tangent * u1
+        # Keep the map points up to the arc start, then the arc, then the map points after the arc end.
+        k0 = i0 + int(np.argmin(np.hypot(*(points[i0:i1] - a_pt).T)))
+        k1 = i0 + int(np.argmin(np.hypot(*(points[i0:i1 + 1] - b_pt).T)))
+        side = np.sign(turn)
+        center = a_pt + side * radius * np.array([-u0[1], u0[0]])
+        ang0 = np.arctan2(a_pt[1] - center[1], a_pt[0] - center[0])
+        steps = max(int(radius * abs(turn) / 0.01), 2)
+        angs = ang0 + side * np.linspace(0.0, abs(turn), steps)
+        arc = np.c_[center[0] + radius * np.cos(angs), center[1] + radius * np.sin(angs)]
+        for q in arc[::5]:
+            shift = max(shift, float(np.min(np.hypot(*(points[k0:k1 + 1] - q).T))))
+        pieces.append(points[start:k0])
+        pieces.append(arc)
+        start = k1 + 1
+        i = k1 + 1
+    pieces.append(points[start:])
+    return resample(np.vstack([p for p in pieces if len(p)])), shift
+
+
 class Path:
     """The route as a list of points, with the heading and curvature at every point."""
 
@@ -161,6 +259,9 @@ class Path:
         # Remove repeated points (they would give a zero distance).
         keep = np.r_[True, np.hypot(*np.diff(points, axis=0).T) > 1e-4]
         points = points[keep]
+        points, shift = smooth_tight_corners(resample(points))
+        if shift > 0.005:
+            print(f"Tight corners rounded for our car (min radius {MIN_RADIUS} m): path moved up to {shift * 100:.0f} cm.")
         self.closed = route[0] == route[-1]                     # Starts and ends on the same node = a loop.
         if self.closed and laps > 1:
             points = np.vstack([points] + [points[1:]] * (laps - 1))
@@ -232,6 +333,43 @@ def odo_test(seconds=60):
                 print(f"distance (wheel sensor) = {dist:5.2f} m    turn (gyro) = {np.degrees(turn):+6.1f} deg")
     print(f"FINAL: distance {dist:.2f} m, turn {np.degrees(turn):+.1f} deg")
     print("If you pushed exactly 1.00 m: TACH_SCALE = 1.00 / distance. Left turn must be POSITIVE.")
+
+
+def circle_test(seconds=7.0):
+    """Drive slow circles at FULL LOCK (left, then right) and print the real circle radius.
+    Needs a free floor area of about 2 m x 2 m. Ctrl+C stops."""
+    qcar = QCar(readMode=READ_MODE, frequency=RATE_HZ)
+    stop = threading.Event()
+    signal.signal(signal.SIGINT, lambda *_: stop.set())
+    with qcar:
+        bias, n, t0 = 0.0, 0, time.time()
+        print("Hold still 1 s (gyro)...")
+        while time.time() - t0 < 1.0:
+            qcar.read(); bias += float(qcar.gyroscope[2]); n += 1
+        bias /= max(n, 1)
+        for name, steer_cmd in (("LEFT", MAX_STEER), ("RIGHT", -MAX_STEER)):
+            print(f"--- full lock {name} for {seconds:.0f} s ---")
+            dist = turn = 0.0
+            t_step = t_prev = t_print = time.time()
+            while not stop.is_set() and time.time() - t_step < seconds:
+                now = time.time(); dt = min(max(now - t_prev, 1e-5), 0.05); t_prev = now
+                qcar.read()
+                v = float(qcar.motorTach) * TACH_SCALE
+                w = GYRO_SIGN * (float(qcar.gyroscope[2]) - bias)
+                if now - t_step > 1.5:                 # Skip the first 1.5 s (speeding up).
+                    dist += abs(v) * dt; turn += abs(w) * dt
+                throttle = float(np.clip(0.062 + 0.10 * (0.15 - v), 0.0, 0.09))
+                qcar.write(throttle=throttle, steering=steer_cmd)
+                if now - t_print > 0.5:
+                    t_print = now
+                    r = dist / turn if turn > 0.05 else float("nan")
+                    print(f"  speed={v:.2f} m/s  turn={np.degrees(turn):5.0f} deg  radius so far={r:.2f} m")
+                time.sleep(max(0.0, 1.0 / RATE_HZ - (time.time() - now)))
+            qcar.write(throttle=0, steering=0)
+            if turn > 0.05:
+                print(f"RESULT {name}: radius = {dist / turn:.2f} m ({dist:.2f} m for {np.degrees(turn):.0f} deg)")
+            time.sleep(1.0)
+    print("Done. Send this text.")
 
 
 def motor_test():
@@ -483,6 +621,7 @@ if __name__ == "__main__":
     parser.add_argument("--laps", type=int, default=1, help="laps for a loop route (first node = last node)")
     parser.add_argument("--graph", action="store_true", help="print the nodes and where each can go, then exit")
     parser.add_argument("--odotest", action="store_true", help="motor OFF: push the car, see distance and turn")
+    parser.add_argument("--circletest", action="store_true", help="drive slow full-lock circles (2x2 m free floor)")
     parser.add_argument("--motortest", action="store_true", help="WHEELS IN THE AIR: fixed motor pushes, prints wheel speed")
     parser.add_argument("--dry", action="store_true", help="motor OFF: push the car along the route")
     parser.add_argument("--lidar", action="store_true", help="stop for objects in front")
@@ -499,6 +638,8 @@ if __name__ == "__main__":
         print_graph(SDCSRoadMap(leftHandTraffic=False))
     elif args.odotest:
         odo_test()
+    elif args.circletest:
+        circle_test()
     elif args.motortest:
         motor_test()
     else:
