@@ -48,7 +48,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.0.2"
+VERSION = "2.0.3"
 
 # =============================================================================
 # SETTINGS
@@ -428,9 +428,13 @@ if __name__ == "__main__":
     parser.add_argument("--dry", action="store_true", help="motor OFF: push the car along the route")
     parser.add_argument("--lidar", action="store_true", help="stop for objects in front")
     parser.add_argument("--nocam", action="store_true", help="do not use the camera (map only)")
+    parser.add_argument("--vmax", type=float, default=None, help=f"top speed in m/s (default {V_MAX})")
     parser.add_argument("--time", type=int, default=RUN_TIME, help=f"stop after this many seconds ({RUN_TIME})")
     args = parser.parse_args()
     print(f"map_drive.py version {VERSION}")
+    if args.vmax is not None:
+        V_MAX = float(np.clip(args.vmax, V_MIN_TURN, 0.5))   # Safety: never above 0.5 m/s.
+        print(f"Top speed set to {V_MAX:.2f} m/s")
 
     if args.graph:
         print_graph(SDCSRoadMap(leftHandTraffic=False))

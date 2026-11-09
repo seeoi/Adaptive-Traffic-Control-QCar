@@ -9,6 +9,14 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.0.3 - 2026-11-09
+- Real test `--route 22,9,13 --dry` on car 6 (pushed by hand, wheels steering themselves): WORKED. The camera
+  locked on the yellow line along the left street and the curve (estimate within +-4 cm), then the car crossed
+  the intersection and turned LEFT into the correct lane, ending at node 13 (student: "lo hizo bien").
+  In the left turn the steering hit the limit (0.50) and the estimate went 9 cm wide, then the camera pulled it
+  back to 0-1 cm. So that turn is about as tight as the car can do.
+- New `--vmax M/S` option to set the top speed for a test (for example `--vmax 0.25` for the first motor run).
+
 ## 2.0.2 - 2026-11-09
 - First real test, `--route 9,13 --dry` on car 6 (pushed by hand, wheels steering by themselves): the left turn
   had the right shape, but the car ended about 10 cm too far LEFT (close to the yellow line) while the estimate
