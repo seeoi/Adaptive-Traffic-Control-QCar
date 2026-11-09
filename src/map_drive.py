@@ -37,6 +37,7 @@ import argparse
 import csv
 import os
 import signal
+import socket
 import threading
 import time
 
@@ -48,7 +49,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.5.1"
+VERSION = "2.6.0"
 
 # =============================================================================
 # SETTINGS
@@ -170,6 +171,29 @@ class LinkWatch:
                 return (self.stuck_since is not None and now - self.stuck_since > timeout
                         and waiting >= LINK_MIN_BYTES)
         return False
+
+
+# Each car is a little different (steering, wheel sensor). Measured values per car, found by the car's name
+# (the name on its screen / prompt, e.g. qcar-67815). A car not in this list uses the default numbers above;
+# measure it with --odotest and --circletest and add it here.
+CAR_PROFILES = {
+    "qcar-67815": dict(name="car 6", TACH_SCALE=1.0, STEER_SCALE=0.70, STEER_BIAS=0.054,
+                       MIN_RADIUS_LEFT=0.66, MIN_RADIUS_RIGHT=0.92),   # left 0.60 m, right 0.84 m at full lock
+}
+
+
+def apply_car_profile():
+    """Load the measured numbers of THIS car (by its name)."""
+    host = socket.gethostname()
+    profile = CAR_PROFILES.get(host)
+    if profile is None:
+        print(f"Car '{host}' has no measured profile: using default numbers. "
+              f"Run --odotest and --circletest on it and send the results.")
+        return
+    for key, value in profile.items():
+        if key != "name":
+            globals()[key] = value
+    print(f"Car profile loaded: {profile['name']} ({host}).")
 
 
 def wrap(angle):
@@ -747,6 +771,7 @@ if __name__ == "__main__":
     parser.add_argument("--time", type=int, default=RUN_TIME, help=f"stop after this many seconds ({RUN_TIME})")
     args = parser.parse_args()
     print(f"map_drive.py version {VERSION}")
+    apply_car_profile()
     if args.vmax is not None:
         V_MAX = float(np.clip(args.vmax, V_MIN_TURN, 0.5))   # Safety: never above 0.5 m/s.
         print(f"Top speed set to {V_MAX:.2f} m/s")

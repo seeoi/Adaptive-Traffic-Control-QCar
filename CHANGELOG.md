@@ -15,6 +15,12 @@ Version numbers: `MAJOR.MINOR.PATCH`
   the start ("lo hizo muy bien"). Only issue: slightly wide (outside) in the roundabout; the steering is close to its left
   limit there (+0.49 of 0.50). The start check did not run (the camera saw the line in only 3 of 5 rows).
 
+## 2.6.0 - 2026-11-09
+- Per-car profiles (`CAR_PROFILES`, chosen by the car's hostname): car 6 = qcar-67815 keeps its measured steering
+  (left 0.60 m / right 0.84 m). Other cars use the defaults until measured with `--odotest` and `--circletest`.
+- `map.ps1` now points to car 7 (192.168.2.45). Car 6's lopsided steering (probably a servo arm a few degrees off
+  center) limits right turns, so we try car 7.
+
 ## 2.5.1 - 2026-11-09
 - Test of 2.5.0: `Lost the connection to the laptop` stopped the car in the roundabout at 32 s although the laptop was
   still connected (slow Wi-Fi). LinkWatch now needs 4 s (was 2 s) AND at least 1500 bytes waiting.
