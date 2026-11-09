@@ -48,7 +48,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.1.1"
+VERSION = "2.1.2"
 
 # =============================================================================
 # SETTINGS
@@ -355,7 +355,7 @@ def odo_test(seconds=60):
     print("If you pushed exactly 1.00 m: TACH_SCALE = 1.00 / distance. Left turn must be POSITIVE.")
 
 
-def circle_test(seconds=7.0):
+def circle_test(seconds=7.0, lock=MAX_STEER):
     """Drive slow circles at FULL LOCK (left, then right) and print the real circle radius.
     Needs a free floor area of about 2 m x 2 m. Ctrl+C stops."""
     qcar = QCar(readMode=READ_MODE, frequency=RATE_HZ)
@@ -367,7 +367,8 @@ def circle_test(seconds=7.0):
         while time.time() - t0 < 1.0:
             qcar.read(); bias += float(qcar.gyroscope[2]); n += 1
         bias /= max(n, 1)
-        for name, steer_cmd in (("LEFT", MAX_STEER), ("RIGHT", -MAX_STEER)):
+        print(f"Steering lock = {lock:.2f} rad")
+        for name, steer_cmd in (("LEFT", lock), ("RIGHT", -lock)):
             print(f"--- full lock {name} for {seconds:.0f} s ---")
             dist = turn = 0.0
             t_step = t_prev = t_print = time.time()
@@ -642,6 +643,7 @@ if __name__ == "__main__":
     parser.add_argument("--graph", action="store_true", help="print the nodes and where each can go, then exit")
     parser.add_argument("--odotest", action="store_true", help="motor OFF: push the car, see distance and turn")
     parser.add_argument("--circletest", action="store_true", help="drive slow full-lock circles (2x2 m free floor)")
+    parser.add_argument("--lock", type=float, default=MAX_STEER, help="steering for --circletest (rad, max 0.7)")
     parser.add_argument("--motortest", action="store_true", help="WHEELS IN THE AIR: fixed motor pushes, prints wheel speed")
     parser.add_argument("--dry", action="store_true", help="motor OFF: push the car along the route")
     parser.add_argument("--lidar", action="store_true", help="stop for objects in front")
@@ -659,7 +661,7 @@ if __name__ == "__main__":
     elif args.odotest:
         odo_test()
     elif args.circletest:
-        circle_test()
+        circle_test(lock=float(np.clip(args.lock, 0.1, 0.7)))
     elif args.motortest:
         motor_test()
     else:

@@ -9,6 +9,12 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.1.2 - 2026-11-09
+- Photo after `22,9,0` with 2.1.1: the car ended over the yellow line, about 10 cm to its LEFT of the lane (the outside
+  of the right turn), same as before. The shorter look-ahead did not change it: the steering is at its limit in this
+  turn, so the car simply cannot turn tighter. Next: find out if the steering can go further than 0.5 rad.
+- `--circletest --lock 0.6` drives the circles with a chosen steering command, to compare the real radius at 0.5 and 0.6.
+
 ## 2.1.1 - 2026-11-09
 - Real test of 2.1.0 `--route 22,9,0`: arrived exactly at the destination, but during the right turn it cut the corner
   on the RIGHT. (Only 2 cm of reshaping was needed for this corner.) Earlier, in left curves, it touched the yellow
