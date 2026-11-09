@@ -50,7 +50,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.7.6"
+VERSION = "2.7.7"
 
 # =============================================================================
 # SETTINGS
@@ -110,8 +110,9 @@ TIGHT_EXTRA = 0.0      # turning a bit earlier (m added to the look-ahead) and d
 # (x, y, radius m, heading deg, shift m). Shift + = move LEFT. Only path points inside the circle AND going
 # in that direction (+-60 deg) are moved, fading out to 0 at the edge of the circle.
 LANE_TRIMS = [
-    # 2.7.4: both trims of 2.7.3 made it worse (right curve -> on the yellow line, roundabout exit -> half out).
-    # Empty until real offsets are measured from an overhead video of a lap.
+    # 2.7.7: roundabout, south side, where the right street (node 14) joins: the car went a little to the right,
+    # over the tip of that street's yellow triangle. Move the path 3 cm left (toward the island) there only.
+    (1.65, 3.18, 0.35, 10, 0.03),
 ]
 OFF_PATH_STOP = 0.40   # SAFETY: if the estimate is this far (m) from the path, stop.
 

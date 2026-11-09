@@ -9,6 +9,13 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.7.7 - 2026-11-09
+- Two loops with 2.7.6 (car 7), almost identical: "me gustaron mucho ... todo lo demás está a la perfección". The y shift
+  fixed the top street, the S-curve and the crossing.
+- Only issue left: in the roundabout, right after entering, where the right street (node 14) joins, the car went a
+  little to the right (over the tip of that street's yellow triangle). `LANE_TRIMS`: 3 cm left in a 35 cm circle there
+  (heading ~east only).
+
 ## 2.7.6 - 2026-11-09
 - 2.7.5 loop (car 7) + 13 photos: better ("siento que mejoró"), steering in the roundabout now peaks at 0.57 (not stuck at
   the limit). Same errors but smaller; worst: after the roundabout, top street, half the car out on the right.
