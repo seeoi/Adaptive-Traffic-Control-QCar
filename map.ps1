@@ -5,6 +5,9 @@
 #   powershell -ExecutionPolicy Bypass -File .\map.ps1 --odotest
 #   powershell -ExecutionPolicy Bypass -File .\map.ps1 --route 9,13 --dry
 #   powershell -ExecutionPolicy Bypass -File .\map.ps1 --route 9,13
+#   powershell -ExecutionPolicy Bypass -File .\map.ps1 --gpscal      (LiDAR room scan, car at x=0 y=2 facing down)
+#   powershell -ExecutionPolicy Bypass -File .\map.ps1 --whereami    (motor OFF, prints the LiDAR position)
+#   powershell -ExecutionPolicy Bypass -File .\map.ps1 --route 22,9,13,19,17,20,22 --gps
 # Everything you type after map.ps1 is passed to map_drive.py as options.
 #
 # Change the IP below to the car you are using (it is shown on the car's screen).

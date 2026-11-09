@@ -34,6 +34,7 @@ Place the car ON the first node of the route, in its lane, facing the way traffi
 """
 
 import argparse
+import contextlib
 import csv
 import os
 import signal
@@ -49,7 +50,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.6.3"
+VERSION = "2.7.0"
 
 # =============================================================================
 # SETTINGS
@@ -103,6 +104,16 @@ TIGHT_CURV = 1.0       # A curve tighter than this (1/m, = radius under 1 m) is 
                        # (smallest circle about 0.85 m). Then the car looks farther ahead so it starts
 TIGHT_EXTRA = 0.0      # turning a bit earlier (m added to the look-ahead) and does not swing wide.
 OFF_PATH_STOP = 0.40   # SAFETY: if the estimate is this far (m) from the path, stop.
+
+# ---- LiDAR position ("GPS") - the official Quanser way to know where the car is ----------------
+# QCarGPS compares what the LiDAR sees (walls, tables, chairs of the ROOM) with a scan saved during
+# calibration, and gives x, y, heading on the map. It does not drift like wheels + gyro.
+# Quanser's own examples use it (vehicle_control.py in Quanser_Academic_Resources).
+GPS_CAL_POSE = [0.0, 2.0, -np.pi / 2]  # Where the car stands for --gpscal: x=0, y=2 m, facing -90 deg (see README).
+GPS_GAIN = 0.15        # Each LiDAR position moves our estimate this part of the way toward it (0..1).
+GPS_GAIN_HEADING = 0.10
+GPS_GATE = 0.35        # Ignore a LiDAR position farther than this (m) from our estimate (a bad match).
+GPS_GATE_HEADING = 25  # ...or a heading more than this many degrees off.
 
 # ---- Camera corrections ----------------------------------------------------------
 USE_CAMERA = True      # False = drive with the map only (also: --nocam).
@@ -522,7 +533,45 @@ def motor_test():
 # =============================================================================
 # MAIN: drive the route
 # =============================================================================
-def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
+def open_gps(calibrate=False):
+    """Start the LiDAR position system (QCarGPS)."""
+    from pal.products.qcar import QCarGPS
+    return QCarGPS(initialPose=GPS_CAL_POSE, calibrate=calibrate)
+
+
+def gps_calibrate():
+    """Save the reference LiDAR scan of the room. The car must stand still at GPS_CAL_POSE."""
+    print(f"CALIBRATION: the car must stand at x={GPS_CAL_POSE[0]:.1f} y={GPS_CAL_POSE[1]:.1f}, "
+          f"facing {np.degrees(GPS_CAL_POSE[2]):.0f} deg, and NOT move. Keep people away from the car.")
+    with open_gps(calibrate=True):
+        pass
+    print("Calibration done. Now check it with --whereami.")
+
+
+def where_am_i(seconds=30):
+    """Motor OFF. Print the LiDAR position 5 times per second and the closest map node."""
+    roadmap = SDCSRoadMap(leftHandTraffic=False)
+    nodes = {}
+    for i in range(len(roadmap.nodes)):
+        nodes[i] = node_pose(roadmap, i)
+    print("Motor is OFF. Put the car on a node (or push it along the road) and watch the numbers.")
+    t_end = time.time() + seconds
+    with open_gps() as gps:
+        t_print = 0.0
+        while time.time() < t_end:
+            if gps.readGPS() and time.time() - t_print > 0.2:
+                t_print = time.time()
+                gx, gy, gth = float(gps.position[0]), float(gps.position[1]), float(gps.orientation[2])
+                best = min(nodes, key=lambda n: (nodes[n][0] - gx) ** 2 + (nodes[n][1] - gy) ** 2)
+                bx, by, bth = nodes[best]
+                print(f"x={gx:+.2f} y={gy:+.2f} heading={np.degrees(gth):+6.1f} deg | closest node {best}: "
+                      f"{np.hypot(bx - gx, by - gy) * 100:.0f} cm away, heading differs "
+                      f"{np.degrees(wrap(gth - bth)):+.0f} deg")
+            time.sleep(0.01)
+    print("Done. Send this text.")
+
+
+def drive(route, laps, dry_run, use_lidar, use_camera, run_time, use_gps=False):
     roadmap = SDCSRoadMap(leftHandTraffic=False)
     path = Path(roadmap, route, laps)
     x, y, th = node_pose(roadmap, route[0])
@@ -542,6 +591,9 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
     if lidar:
         lidar.start()
     qcar = QCar(readMode=READ_MODE, frequency=RATE_HZ)
+    gps = open_gps() if use_gps else None
+    gps_ok_at = -10.0          # Last time a LiDAR position was used.
+    gps_x = gps_y = None
 
     idx = 0                    # Index of the closest path point.
     steer = 0.0                # Steering sent to the wheels now.
@@ -563,19 +615,24 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
     log_file = open(f"map_{time.strftime('%H%M%S')}.csv", "w", newline="")
     log = csv.writer(log_file)
     log.writerow(["t", "x", "y", "heading_deg", "s", "cte", "speed", "v_target", "throttle",
-                  "steer", "steer_map", "steer_cam", "lane_error", "yellow_rows", "mode", "lidar_front"])
+                  "steer", "steer_map", "steer_cam", "lane_error", "yellow_rows", "mode", "lidar_front",
+                  "gps_x", "gps_y"])
 
     try:
-        with qcar:
+        with qcar, (gps if gps is not None else contextlib.nullcontext()):
             # ---- 1) Measure the gyro error while the car is still ------------------
             print("Hold still: measuring the gyro (and checking the start position) for 1.5 seconds...")
             t0, n = time.time(), 0
             start_errors = []
-            while time.time() - t0 < 1.5:
+            start_gps = []
+            while time.time() - t0 < (3.0 if gps is not None else 1.5):
                 qcar.read()
                 gyro_bias += float(qcar.gyroscope[2])
                 n += 1
                 qcar.write(throttle=0, steering=0)
+                if gps is not None and gps.readGPS():
+                    start_gps.append((float(gps.position[0]), float(gps.position[1]),
+                                      float(gps.orientation[2])))
                 if use_camera:
                     frame = lf.grab_frame(cameras)
                     if frame is not None:
@@ -587,7 +644,23 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
             # is on a straight road and the camera sees the yellow line well, use it to correct the
             # sideways start position (this is the only place where the camera can see the error
             # before the first curve).
-            if len(start_errors) >= 5 and abs(path.curv[:path.index_at(0.6)]).max() < CAM_MAX_CURV:
+            if gps is not None and len(start_gps) >= 3:
+                # LiDAR START: take the car's real start pose, so placing it by hand does not matter much.
+                g = np.array(start_gps[len(start_gps) // 2:])
+                gx, gy = float(np.median(g[:, 0])), float(np.median(g[:, 1]))
+                gth = float(np.arctan2(np.median(np.sin(g[:, 2])), np.median(np.cos(g[:, 2]))))
+                print(f"LiDAR start: x={gx:+.2f} y={gy:+.2f} heading={np.degrees(gth):+.0f} deg "
+                      f"({np.hypot(gx - x, gy - y) * 100:.0f} cm and {np.degrees(wrap(gth - th)):+.0f} deg "
+                      f"from node {route[0]}).")
+                if np.hypot(gx - x, gy - y) > 0.5 or abs(wrap(gth - th)) > np.radians(40):
+                    print("LiDAR start is too far from the start node: re-calibrate (--gpscal) or move the car. "
+                          "Not driving.")
+                    return
+                x, y, th = gx, gy, gth
+            elif gps is not None:
+                print("LiDAR start: NO position from the LiDAR. Run --whereami to check. Not driving.")
+                return
+            elif len(start_errors) >= 5 and abs(path.curv[:path.index_at(0.6)]).max() < CAM_MAX_CURV:
                 side = float(np.clip(np.median(start_errors) * CAM_M_PER_UNIT, -START_FIX_MAX, START_FIX_MAX))
                 x += side * -np.sin(th)
                 y += side * np.cos(th)
@@ -614,6 +687,16 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                 th = wrap(th + yaw_rate * dt)
                 x += speed * np.cos(th) * dt
                 y += speed * np.sin(th) * dt
+                # ---- 2b) LiDAR POSITION: pull the estimate toward it (no drift) ------
+                if gps is not None and gps.readGPS():
+                    gps_x, gps_y = float(gps.position[0]), float(gps.position[1])
+                    gth = float(gps.orientation[2])
+                    if (np.hypot(gps_x - x, gps_y - y) < GPS_GATE
+                            and abs(wrap(gth - th)) < np.radians(GPS_GATE_HEADING)):
+                        x += GPS_GAIN * (gps_x - x)
+                        y += GPS_GAIN * (gps_y - y)
+                        th = wrap(th + GPS_GAIN_HEADING * wrap(gth - th))
+                        gps_ok_at = now
                 idx = path.nearest(x, y, idx)
                 cte = path.cross_track(x, y, idx)
 
@@ -678,6 +761,8 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                 else:
                     steer_target = map_steer
                     mode = "MAP"
+                if gps is not None:
+                    mode += "+GPS" if now - gps_ok_at < 0.5 else ""
                 if image is not None:
                     t_cam = now
                 steer_target = float(np.clip(steer_target, -MAX_STEER, MAX_STEER))
@@ -743,7 +828,8 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                               f"{throttle:.3f}", f"{steer:+.3f}", f"{map_steer:+.3f}",
                               "" if camera_steer is None else f"{camera_steer:+.3f}",
                               "" if lane_error is None else f"{lane_error:+.3f}", yellow_rows, mode,
-                              "" if not np.isfinite(front) else f"{front:.2f}"])
+                              "" if not np.isfinite(front) else f"{front:.2f}",
+                              "" if gps_x is None else f"{gps_x:.3f}", "" if gps_y is None else f"{gps_y:.3f}"])
                 loops += 1
                 if now - t_print > 1.0 / PRINT_HZ:
                     log_file.flush()            # Save the log now, so it survives if the program is killed.
@@ -779,6 +865,9 @@ if __name__ == "__main__":
     parser.add_argument("--motortest", action="store_true", help="WHEELS IN THE AIR: fixed motor pushes, prints wheel speed")
     parser.add_argument("--dry", action="store_true", help="motor OFF: push the car along the route")
     parser.add_argument("--lidar", action="store_true", help="stop for objects in front")
+    parser.add_argument("--gps", action="store_true", help="use the LiDAR position (QCarGPS) - needs --gpscal once")
+    parser.add_argument("--gpscal", action="store_true", help="save the LiDAR room scan (car at x=0, y=2, facing -90)")
+    parser.add_argument("--whereami", action="store_true", help="motor OFF: print the LiDAR position for 30 s")
     parser.add_argument("--nocam", action="store_true", help="do not use the camera (map only)")
     parser.add_argument("--vmax", type=float, default=None, help=f"top speed in m/s (default {V_MAX})")
     parser.add_argument("--time", type=int, default=RUN_TIME, help=f"stop after this many seconds ({RUN_TIME})")
@@ -797,6 +886,13 @@ if __name__ == "__main__":
         circle_test(lock=float(np.clip(args.lock, 0.1, 0.7)))
     elif args.motortest:
         motor_test()
+    elif args.gpscal:
+        gps_calibrate()
+    elif args.whereami:
+        where_am_i()
     else:
         route = [int(n) for n in args.route.split(",")]
-        drive(route, args.laps, args.dry, args.lidar, USE_CAMERA and not args.nocam, args.time)
+        if args.gps and args.lidar:
+            print("--gps and --lidar both need the LiDAR: using --gps only.")
+        drive(route, args.laps, args.dry, args.lidar and not args.gps, USE_CAMERA and not args.nocam,
+              args.time, use_gps=args.gps)

@@ -9,6 +9,20 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.7.0 - 2026-11-09
+- Car 7 loop with 2.6.3: same problem - after the first LEFT curve the car was nearly in the middle of the street, and
+  too far left in the curve before the roundabout, while the estimate said off=0 cm. Wheels + gyro + camera are not
+  enough: any start heading error grows to 10-20 cm, and the camera locked only on the top street.
+- New: LiDAR position (QCarGPS), the way Quanser's own examples do it (`vehicle_control.py` in
+  quanser/Quanser_Academic_Resources: QCarGPS + EKF + Stanley on SDCSRoadMap). The LiDAR compares the ROOM with a saved
+  scan and gives x, y, heading with no drift.
+  - `--gpscal`: save the room scan. Car at x=0, y=2.0, facing -90 (central street, going down, about 16 cm after the
+    upper corner mark = node 11).
+  - `--whereami`: motor OFF, prints the LiDAR position and the closest node for 30 s.
+  - `--gps`: drive with it. Start pose comes from the LiDAR (hand placement matters less); then every LiDAR position pulls
+    the estimate toward it (`GPS_GAIN` 0.15, gate 35 cm / 25 deg). Mode shows `+GPS`. Log has gps_x, gps_y.
+  - `--gps` and `--lidar` cannot run together (same sensor); `--gps` wins.
+
 ## 2.6.3 - 2026-11-09
 - Car 7 loop with 2.6.2: rounding fixed ("moved up to 2 cm"), but after the first LEFT curve the car was on the yellow
   line (middle of the street) while the estimate said off=0 cm. The map-only estimate was ~15 cm wrong - most likely a
