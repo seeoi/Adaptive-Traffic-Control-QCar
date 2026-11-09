@@ -9,6 +9,14 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.3.1 - 2026-11-09
+- Test of 2.3.0 (photo): in the first LEFT curve after node 22 the car was too wide, on the white dashed line, while the
+  estimate said 1 cm. With the camera now off in curves and the start straight only ~1 m long, nothing corrected the
+  hand-placed start position any more (before, the camera did it on that straight).
+- New START CHECK: while the car stands still for the gyro (now 1.5 s), the camera measures how far the car is from the
+  lane center, and the start position is corrected (up to 12 cm). The camera window on straights is also shorter
+  (0.3 m behind to 0.5 m ahead), so it can help on short straights.
+
 ## 2.3.0 - 2026-11-09
 - Loop test of 2.2.1 (2 laps): 1st roundabout: entering it cut into the white island a bit, then went wide outside;
   2nd lap: drove on the yellow line near node 22 and went out on the right after the left curve; the 2nd pass through the

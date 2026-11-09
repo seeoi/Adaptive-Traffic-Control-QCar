@@ -48,7 +48,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.3.0"
+VERSION = "2.3.1"
 
 # =============================================================================
 # SETTINGS
@@ -112,6 +112,7 @@ CAM_GATE = 0.10        # Ignore a camera reading that disagrees with the estimat
 NO_CAMERA_ZONES = [    # (x, y, radius in m): inside these circles the camera is NOT used (map only).
     (1.576, 3.817, 1.30),  # Roundabout (center from nodes 16/17, lane radius 0.68 m). Its yellow traffic-island
 ]                          # triangles fooled the camera and pushed the estimate off before the roundabout.
+START_FIX_MAX = 0.12   # The start check may move the start position by at most this much (m).
 CAM_MAX_CURV = 0.35    # The camera is only used where the road is almost straight (curvature below this, 1/m).
 CAM_STEER_MIX = 0.7    # 0 = map steering only, 1 = camera only (when the camera is trusted).
 KP_CAM = 0.9           # Camera steering strength (same idea as KP in lane_follow.py).
@@ -487,14 +488,33 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
     try:
         with qcar:
             # ---- 1) Measure the gyro error while the car is still ------------------
-            print("Hold still: measuring the gyro for 1 second...")
+            print("Hold still: measuring the gyro (and checking the start position) for 1.5 seconds...")
             t0, n = time.time(), 0
-            while time.time() - t0 < 1.0:
+            start_errors = []
+            while time.time() - t0 < 1.5:
                 qcar.read()
                 gyro_bias += float(qcar.gyroscope[2])
                 n += 1
                 qcar.write(throttle=0, steering=0)
+                if use_camera:
+                    frame = lf.grab_frame(cameras)
+                    if frame is not None:
+                        err, _, rows = detector.update(frame)
+                        if err is not None and rows >= 4:
+                            start_errors.append(err)
             gyro_bias /= max(n, 1)
+            # START CHECK: the car is placed by hand, so it is rarely exactly on the node. If the start
+            # is on a straight road and the camera sees the yellow line well, use it to correct the
+            # sideways start position (this is the only place where the camera can see the error
+            # before the first curve).
+            if len(start_errors) >= 5 and abs(path.curv[:path.index_at(0.6)]).max() < CAM_MAX_CURV:
+                side = float(np.clip(np.median(start_errors) * CAM_M_PER_UNIT, -START_FIX_MAX, START_FIX_MAX))
+                x += side * -np.sin(th)
+                y += side * np.cos(th)
+                print(f"Start check: the car is {abs(side) * 100:.0f} cm to the "
+                      f"{'LEFT' if side > 0 else 'RIGHT'} of the lane center. Start position corrected.")
+            else:
+                print("Start check: camera could not check the start position (using the node as it is).")
             print("DRY RUN: motor is OFF, push the car along the route." if dry_run
                   else "Driving. Press Ctrl+C to stop.")
 
@@ -541,7 +561,7 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                 # The camera is only used on STRAIGHT road (2.3.0). In curves and merges its idea of the
                 # lane center was off by 5-10 cm (it guesses the center from the yellow line), while the
                 # map + wheels + gyro alone drove the blind parts (intersection, roundabout) very well.
-                j_lo, j_hi = path.index_at(path.s[idx] - 0.5), path.index_at(path.s[idx] + 0.7)
+                j_lo, j_hi = path.index_at(path.s[idx] - 0.3), path.index_at(path.s[idx] + 0.5)
                 camera_road = np.max(np.abs(path.curv[j_lo:j_hi + 1])) < CAM_MAX_CURV
                 if locked and not in_no_camera_zone and camera_road:
                     camera_steer = float(-lf.STEER_SIGN * KP_CAM * lane_error)
