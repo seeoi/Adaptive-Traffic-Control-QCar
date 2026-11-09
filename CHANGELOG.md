@@ -15,6 +15,13 @@ Version numbers: `MAJOR.MINOR.PATCH`
   the start ("lo hizo muy bien"). Only issue: slightly wide (outside) in the roundabout; the steering is close to its left
   limit there (+0.49 of 0.50). The start check did not run (the camera saw the line in only 3 of 5 rows).
 
+## 2.4.1 - 2026-11-09
+- The log of the 3-lap run stopped at 41 s / 8.1 m (the program was killed and the rest of the log was never written).
+  It shows again that on the central street north of the intersection and the diagonal to the roundabout the camera put
+  the car 7-9 cm left of the map path while the map steering pushed hard right (-0.53).
+- That area is now a `NO_CAMERA_ZONES` circle too (0.30, 2.20, r 0.65 m).
+- The log file is saved 5 times per second, so it survives a killed program.
+
 ## 2.4.0 - 2026-11-09
 - SAFETY: the SSH connection dropped again after 3 s of a 3-lap run and the car kept driving for minutes (Ctrl+C could
   not reach it). New `LinkWatch`: the car checks its SSH connection in /proc/net/tcp; if the laptop has not confirmed

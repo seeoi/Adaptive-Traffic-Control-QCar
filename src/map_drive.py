@@ -48,7 +48,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.4.0"
+VERSION = "2.4.1"
 
 # =============================================================================
 # SETTINGS
@@ -111,7 +111,9 @@ CAM_GATE = 0.10        # Ignore a camera reading that disagrees with the estimat
                        # it is probably another yellow line (for example at an intersection).
 NO_CAMERA_ZONES = [    # (x, y, radius in m): inside these circles the camera is NOT used (map only).
     (1.576, 3.817, 1.30),  # Roundabout (center from nodes 16/17, lane radius 0.68 m). Its yellow traffic-island
-]                          # triangles fooled the camera and pushed the estimate off before the roundabout.
+                           # triangles fooled the camera and pushed the estimate off before the roundabout.
+    (0.30, 2.20, 0.65),    # Central street north of the intersection + the diagonal to the roundabout: the camera
+]                          # disagreed with the map by 7-9 cm there in every loop (2.4.1).
 START_FIX_MAX = 0.12   # The start check may move the start position by at most this much (m).
 CAM_MAX_CURV = 0.35    # The camera is only used where the road is almost straight (curvature below this, 1/m).
 CAM_STEER_MIX = 0.7    # 0 = map steering only, 1 = camera only (when the camera is trusted).
@@ -705,6 +707,7 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                               "" if not np.isfinite(front) else f"{front:.2f}"])
                 loops += 1
                 if now - t_print > 1.0 / PRINT_HZ:
+                    log_file.flush()            # Save the log now, so it survives if the program is killed.
                     loop_hz = loops / max(now - t_print, 1e-3) if t_print else 0.0
                     loops = 0
                     t_print = now
