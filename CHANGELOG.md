@@ -9,6 +9,15 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.7.3 - 2026-11-09
+- Two `--gps` loops with 2.7.2 (car 7): left turn at the crossing now fine; "the rest in the lanes", roundabout good.
+  Still: in the right curve before the roundabout the car went too far RIGHT, and at the roundabout exit (top street)
+  a bit outside (right). The log says the car followed the path within 1-2 cm and the LiDAR agreed, so the error is in
+  WHERE the path/LiDAR put the lane there, not in the steering.
+- CSV check of `GPS_OFFSET`: best value again 0.16-0.17 m (left curves +0.5 deg, right +2.9 deg). Kept.
+- New: `LANE_TRIMS` - move the path sideways in a few places (fades in/out over the circle, only for the given
+  direction). Right curve before the roundabout: 5 cm LEFT. Roundabout exit to the top street: 3 cm LEFT.
+
 ## 2.7.2 - 2026-11-09
 - Measured from the CSV of the first `--gps` loop: the LiDAR position is NOT late (along the road it matched the wheels,
   0.4 cm), but it is about 16 cm IN FRONT of the rear axle (the point our car model uses). Proof: in curves the LiDAR

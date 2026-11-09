@@ -50,7 +50,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.7.2"
+VERSION = "2.7.3"
 
 # =============================================================================
 # SETTINGS
@@ -103,6 +103,14 @@ MAX_RESHAPE = 0.10     # Never move the path more than this (m) when rounding a 
 TIGHT_CURV = 1.0       # A curve tighter than this (1/m, = radius under 1 m) is too tight for our car
                        # (smallest circle about 0.85 m). Then the car looks farther ahead so it starts
 TIGHT_EXTRA = 0.0      # turning a bit earlier (m added to the look-ahead) and does not swing wide.
+# LANE TRIMS: small sideways moves of the path in places where the car, seen on the mat, is not centered
+# (the LiDAR position and the Quanser map are each a few cm off in some parts of the room).
+# (x, y, radius m, heading deg, shift m). Shift + = move LEFT. Only path points inside the circle AND going
+# in that direction (+-60 deg) are moved, fading out to 0 at the edge of the circle.
+LANE_TRIMS = [
+    (0.55, 2.55, 0.65, 65, 0.05),    # right curve before the roundabout: car went too far right (2.7.2)
+    (1.60, 4.45, 0.45, 170, 0.03),   # roundabout exit to the top street: car a bit outside (right) (2.7.2)
+]
 OFF_PATH_STOP = 0.40   # SAFETY: if the estimate is this far (m) from the path, stop.
 
 # ---- LiDAR position ("GPS") - the official Quanser way to know where the car is ----------------
@@ -257,6 +265,20 @@ def print_graph(roadmap):
         print(f"{i:2d}: ({x:+.2f}, {y:+.2f}) {np.degrees(h):+5.0f} deg  ->  {', '.join(exits) or 'no data'}")
 
 
+def apply_lane_trims(points):
+    """Move the path sideways in the LANE_TRIMS places. Returns the new points."""
+    d = np.gradient(points, axis=0)
+    heading = np.arctan2(d[:, 1], d[:, 0])
+    left = np.stack([-np.sin(heading), np.cos(heading)], axis=1)   # unit vector to the LEFT of the path
+    out = points.copy()
+    for zx, zy, zr, zh, shift in LANE_TRIMS:
+        dist = np.hypot(points[:, 0] - zx, points[:, 1] - zy)
+        same_way = np.abs(wrap(heading - np.radians(zh))) < np.radians(60)
+        weight = np.where((dist < zr) & same_way, 0.5 * (1 + np.cos(np.pi * dist / zr)), 0.0)  # 1 center, 0 edge
+        out += (shift * weight)[:, None] * left
+    return out
+
+
 def curvature_of(points):
     """Curvature (1/m) at every point of a polyline, smoothed over about 10 cm."""
     step = np.hypot(*np.diff(points, axis=0).T)
@@ -389,6 +411,7 @@ class Path:
         points = points[keep]
         points = shift_to_outside(resample(points))           # 1) optional: open up a bit in curves (off)
         points, shift = smooth_tight_corners(points)          # 2) no corner tighter than the car can turn
+        points = apply_lane_trims(points)                      # 3) small fixes for places on this mat
         print(f"Path adjusted for our car: tight corners rounded to {MIN_RADIUS_LEFT} m (left) / "
               f"{MIN_RADIUS_RIGHT} m (right), moved up to {shift * 100:.0f} cm.")
         self.closed = route[0] == route[-1]                     # Starts and ends on the same node = a loop.
