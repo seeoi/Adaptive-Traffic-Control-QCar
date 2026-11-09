@@ -48,7 +48,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.1.2"
+VERSION = "2.2.0"
 
 # =============================================================================
 # SETTINGS
@@ -57,9 +57,15 @@ VERSION = "2.1.2"
 WHEELBASE = 0.256      # Distance between front and back wheels (m). QCar 2 value.
 TACH_SCALE = 1.0       # Real meters per meter that the wheel sensor says. Measured on car 6: 1.00 m -> 1.01 m, OK.
 GYRO_SIGN = 1          # +1 if turning LEFT gives a positive gyro value. Measured on car 6: left turn = +92 deg, OK.
-STEER_GAIN = 1.7       # Multiply the steering by this. The real wheels turn LESS than asked: on car 6,
-                       # steering 0.40 gave a 1.06 m circle, but the math says 0.60 m (0.256 / tan 0.40).
-                       # 0.60 / 1.06 = 0.59, and 1 / 0.59 = 1.7. Raise it if the car turns too WIDE.
+# How the wheels really turn on car 6 (--circletest at full lock 0.5, slow):
+#   LEFT  -> 0.60 m circle = real angle atan(0.256 / 0.60) = 0.403 rad
+#   RIGHT -> 0.84 m circle = real angle atan(0.256 / 0.84) = 0.296 rad
+#   (asking for 0.6 gave the same circles: the car's own limit is 0.5.)
+# So: real angle = STEER_SCALE * command + STEER_BIAS. The wheels turn only 70 % of what is asked, and
+# they are pointed a little to the LEFT even at "0". To get a wanted real angle we send
+# (angle - STEER_BIAS) / STEER_SCALE.
+STEER_SCALE = 0.70
+STEER_BIAS = 0.054     # rad, + = left
 STEER_TRIM = 0.0       # Small constant steering offset (rad), positive = left.
 MAX_STEER = 0.5        # Largest steering angle (rad).
 STEER_RATE = 3.0       # Largest steering change per second (rad/s).
@@ -84,8 +90,9 @@ MAX_THROTTLE = 0.11    # Hard limit of the motor command. Never negative (negati
 LOOKAHEAD_MIN = 0.22   # Pure pursuit looks this far ahead at low speed (m)...
 LOOKAHEAD_GAIN = 0.50  # ...plus this many meters per m/s of speed. (2.1.1: shorter, because a long look-ahead
                        # makes the car cut corners - the right turn cut the corner on the right.)
-MIN_RADIUS = 0.90      # Corners are made at least this wide (m). Car 6 at full lock really drives 0.80-0.84 m;
-                       # the extra 6-10 cm leaves the steering some room to correct.
+MIN_RADIUS_LEFT = 0.66   # Left corners are made at least this wide (m). Car 6 at full lock left: 0.60 m.
+MIN_RADIUS_RIGHT = 0.92  # Right corners at least this wide (m). Car 6 at full lock right: 0.84 m.
+                         # The extra 6-8 cm leaves the steering some room to correct.
                        # Map corners tighter than this are reshaped before driving (see smooth_tight_corners).
 CORNER_SHIFT = 0.0     # Optional: move the path this far (m) to the OUTSIDE of curves. Off: in tests on paper it
                        # made the turns tighter at the ends, which our car cannot do.
@@ -194,7 +201,7 @@ def shift_to_outside(points, shift=CORNER_SHIFT):
     return resample(points - (shift * amount)[:, None] * left_normal)
 
 
-def smooth_tight_corners(points, min_radius=MIN_RADIUS):
+def smooth_tight_corners(points):
     """Reshape corners that are tighter than the car can turn.
 
     The map's right turns (about 0.7 m radius) are tighter than our car's smallest circle (about 0.82 m).
@@ -203,8 +210,10 @@ def smooth_tight_corners(points, min_radius=MIN_RADIUS):
     driver who starts the turn a little earlier and cuts the corner a little. For a 90 degree corner the
     middle of the turn moves only about 6 cm to the inside. Returns (new_points, biggest_shift_m).
     """
-    limit = 1.0 / min_radius
-    curv = np.abs(curvature_of(points))
+    signed = curvature_of(points)
+    # "How much too tight" at each point: > 1 means tighter than the car can turn in that direction.
+    curv = np.where(signed > 0, signed * MIN_RADIUS_LEFT, -signed * MIN_RADIUS_RIGHT)
+    limit = 1.0
     n = len(points)
     d = np.diff(points, axis=0)
     heading = np.r_[np.arctan2(d[:, 1], d[:, 0]), np.arctan2(d[-1, 1], d[-1, 0])]
@@ -215,16 +224,16 @@ def smooth_tight_corners(points, min_radius=MIN_RADIUS):
             continue
         # Found a corner that is too tight. Walk back and forward to where the road is nearly straight.
         i0 = i
-        while i0 > start and curv[i0] > 0.25 and i - i0 < 80:
+        while i0 > start and np.abs(signed[i0]) > 0.25 and i - i0 < 80:
             i0 -= 1
         i1 = i
-        while i1 < n - 1 and (curv[i1] > 0.25 or np.any(curv[i1:min(i1 + 15, n)] > limit)) and i1 - i < 300:
+        while i1 < n - 1 and (np.abs(signed[i1]) > 0.25 or np.any(curv[i1:min(i1 + 15, n)] > limit)) and i1 - i < 300:
             i1 += 1
         # Go a bit further along the straight roads on both sides (up to 0.5 m), so the bigger arc fits.
         for _ in range(50):
-            if i0 > start and curv[i0 - 1] < 0.3:
+            if i0 > start and abs(signed[i0 - 1]) < 0.3:
                 i0 -= 1
-            if i1 < n - 2 and curv[i1 + 1] < 0.3:
+            if i1 < n - 2 and abs(signed[i1 + 1]) < 0.3:
                 i1 += 1
         turn = wrap(heading[i1] - heading[i0])
         u0 = np.array([np.cos(heading[i0]), np.sin(heading[i0])])
@@ -239,7 +248,7 @@ def smooth_tight_corners(points, min_radius=MIN_RADIUS):
         vertex = p0 + t0 * u0
         t1 = float(np.dot(p1 - vertex, u1))
         # Arc of radius R touching both lines: it starts R*tan(turn/2) before the corner point.
-        radius = min_radius
+        radius = MIN_RADIUS_LEFT if turn > 0 else MIN_RADIUS_RIGHT
         tangent = radius * np.tan(abs(turn) / 2)
         room = min(t0, t1)
         if room <= 0:
@@ -281,7 +290,8 @@ class Path:
         points = points[keep]
         points = shift_to_outside(resample(points))           # 1) optional: open up a bit in curves (off)
         points, shift = smooth_tight_corners(points)          # 2) no corner tighter than the car can turn
-        print(f"Path adjusted for our car: tight corners rounded to {MIN_RADIUS} m (moved up to {shift * 100:.0f} cm).")
+        print(f"Path adjusted for our car: tight corners rounded to {MIN_RADIUS_LEFT} m (left) / "
+              f"{MIN_RADIUS_RIGHT} m (right), moved up to {shift * 100:.0f} cm.")
         self.closed = route[0] == route[-1]                     # Starts and ends on the same node = a loop.
         if self.closed and laps > 1:
             points = np.vstack([points] + [points[1:]] * (laps - 1))
@@ -518,7 +528,8 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                     lookahead += TIGHT_EXTRA         # Tight corner ahead: start turning earlier.
                 target = path.xy[path.index_at(path.s[idx] + lookahead)]
                 alpha = wrap(np.arctan2(target[1] - y, target[0] - x) - th)
-                map_steer = float(np.arctan2(2 * WHEELBASE * np.sin(alpha), lookahead)) * STEER_GAIN
+                wanted_angle = float(np.arctan2(2 * WHEELBASE * np.sin(alpha), lookahead))
+                map_steer = (wanted_angle - STEER_BIAS) / STEER_SCALE   # what to send to get that real angle
 
                 locked = lock_since is not None and now - lock_since >= CAM_LOCK_S and lane_error is not None
                 trusted = False

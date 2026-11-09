@@ -9,6 +9,16 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.2.0 - 2026-11-09
+- `--circletest` on car 6 (slow, full lock): LEFT circle 0.60 m, RIGHT circle 0.84 m. Asking for 0.6 instead of 0.5
+  gave the same circles (the car's own limit is 0.5). So the steering is NOT symmetric: real angle =
+  0.70 * command + 0.054 rad (pointed a little to the left at "0"), and right turns can never be tighter than 0.84 m.
+  That is why the right turn always ended wide (on the yellow line).
+- Steering now uses this model instead of the single `STEER_GAIN` 1.7: `STEER_SCALE` 0.70, `STEER_BIAS` 0.054.
+- Corners are rounded per direction: left at least `MIN_RADIUS_LEFT` 0.66 m, right at least `MIN_RADIUS_RIGHT` 0.92 m.
+- Good news for the roundabout (left turns, about 0.6 m): the car CAN turn that tight to the left.
+- Not tested on the car yet.
+
 ## 2.1.2 - 2026-11-09
 - Photo after `22,9,0` with 2.1.1: the car ended over the yellow line, about 10 cm to its LEFT of the lane (the outside
   of the right turn), same as before. The shorter look-ahead did not change it: the steering is at its limit in this
