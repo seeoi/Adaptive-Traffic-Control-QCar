@@ -9,6 +9,15 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.0.9 - 2026-11-09
+- Real test of 2.0.8 `--route 22,9,0`: the right turn ended MORE to the left (closer to the yellow line), not less.
+  Pattern in all runs: in the curve before the intersection the car rides left (touches the yellow line) while the
+  camera is in charge, and after the blind turn it ends left by about the same amount. Likely cause: the camera's idea
+  of the lane center is pulled toward the yellow line, and the camera both steers the car (70 %) and moves the
+  position estimate, so the error is carried into the blind turn.
+- The map now has more say: `CAM_STEER_MIX` 0.7 -> 0.3, `FIX_LATERAL` 2.5 -> 0.8 (the wheel sensor and the gyro
+  proved accurate, so the estimate needs only a gentle camera correction). Not tested on the car yet.
+
 ## 2.0.8 - 2026-11-09
 - Real test `--route 22,9,0 --vmax 0.2` (2.0.7): the RIGHT turn worked, but it was a bit wide: the steering stayed at
   the limit (-0.50) through the whole turn and the front-left wheel just touched the yellow line.
