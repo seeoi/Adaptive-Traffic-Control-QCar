@@ -48,7 +48,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.4.1"
+VERSION = "2.5.0"
 
 # =============================================================================
 # SETTINGS
@@ -107,10 +107,10 @@ CAM_MIN_ROWS = 3       # The camera is "locked" when it sees the yellow line in 
 CAM_LOCK_S = 0.3       # ...for this long.
 CAM_M_PER_UNIT = 0.36  # Lane error 1.0 = this many meters sideways (lane half = 0.135 m = about 155 pixels).
 CAM_AHEAD = 0.40       # The camera measures the lane about this far in front of the car (m).
-CAM_GATE = 0.10        # Ignore a camera reading that disagrees with the estimate by more than this (m):
+CAM_GATE = 0.20        # Ignore a camera reading that disagrees with the estimate by more than this (m):
                        # it is probably another yellow line (for example at an intersection).
 NO_CAMERA_ZONES = [    # (x, y, radius in m): inside these circles the camera is NOT used (map only).
-    (1.576, 3.817, 1.30),  # Roundabout (center from nodes 16/17, lane radius 0.68 m). Its yellow traffic-island
+    (1.576, 3.817, 1.00),  # Roundabout (center from nodes 16/17, lane radius 0.68 m). Its yellow traffic-island
                            # triangles fooled the camera and pushed the estimate off before the roundabout.
     (0.30, 2.20, 0.65),    # Central street north of the intersection + the diagonal to the roundabout: the camera
 ]                          # disagreed with the map by 7-9 cm there in every loop (2.4.1).
@@ -606,7 +606,7 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                 # The camera is only used on STRAIGHT road (2.3.0). In curves and merges its idea of the
                 # lane center was off by 5-10 cm (it guesses the center from the yellow line), while the
                 # map + wheels + gyro alone drove the blind parts (intersection, roundabout) very well.
-                j_lo, j_hi = path.index_at(path.s[idx] - 0.3), path.index_at(path.s[idx] + 0.5)
+                j_lo, j_hi = path.index_at(path.s[idx] - 0.2), path.index_at(path.s[idx] + 0.3)
                 camera_road = np.max(np.abs(path.curv[j_lo:j_hi + 1])) < CAM_MAX_CURV
                 if locked and not in_no_camera_zone and camera_road:
                     camera_steer = float(-lf.STEER_SIGN * KP_CAM * lane_error)

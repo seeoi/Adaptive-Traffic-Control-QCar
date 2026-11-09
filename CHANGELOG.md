@@ -15,6 +15,16 @@ Version numbers: `MAJOR.MINOR.PATCH`
   the start ("lo hizo muy bien"). Only issue: slightly wide (outside) in the roundabout; the steering is close to its left
   limit there (+0.49 of 0.50). The start check did not run (the camera saw the line in only 3 of 5 rows).
 
+## 2.5.0 - 2026-11-09
+- Test of 2.4.1 (1 lap): the estimate stayed within 3 cm of the path the WHOLE lap, but the camera was used ZERO times
+  (no `MAP+CAM` in the log). The real car drifted away from the estimate: left turn exit to the right, before the
+  roundabout to the right, top street on the yellow line. A hand-placed start that is 1 degree off already moves the car
+  about 15 cm sideways after 9 m, and nothing corrected it any more. The 2.3.x/2.4.x changes switched the camera off too
+  much: on straights its correction was blocked by the 10 cm gate exactly when the error was large.
+- Camera back on straights: gate 0.10 -> 0.20 m; straight-road check shorter (0.2 m behind, 0.3 m ahead) so short
+  straights count; roundabout no-camera zone 1.3 -> 1.0 m so most of the top street can use the camera.
+  Curves, the intersection, the roundabout and the diagonal stay map-only.
+
 ## 2.4.1 - 2026-11-09
 - The log of the 3-lap run stopped at 41 s / 8.1 m (the program was killed and the rest of the log was never written).
   It shows again that on the central street north of the intersection and the diagonal to the roundabout the camera put
