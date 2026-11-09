@@ -9,6 +9,15 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2026-11-09 - FIRST FULL LOOP WITH THE ROUNDABOUT (2.3.1, car 6)
+- `--route 22,9,13,19,17,20,22 --vmax 0.2`: the whole 13.5 m loop in 68 s - left street, curve, LEFT at the intersection,
+  central street, into the roundabout, around it, out to the top street, back down the left street - and it stopped at
+  the start ("lo hizo muy bien"). Only issue: slightly wide (outside) in the roundabout; the steering is close to its left
+  limit there (+0.49 of 0.50). The start check did not run (the camera saw the line in only 3 of 5 rows).
+
+## 2.3.2 - 2026-11-09
+- Start check now accepts 3 of 5 rows (it needed 4).
+
 ## 2.3.1 - 2026-11-09
 - Test of 2.3.0 (photo): in the first LEFT curve after node 22 the car was too wide, on the white dashed line, while the
   estimate said 1 cm. With the camera now off in curves and the start straight only ~1 m long, nothing corrected the

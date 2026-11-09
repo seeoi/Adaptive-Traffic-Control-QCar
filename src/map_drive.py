@@ -48,7 +48,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.3.1"
+VERSION = "2.3.2"
 
 # =============================================================================
 # SETTINGS
@@ -500,7 +500,7 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                     frame = lf.grab_frame(cameras)
                     if frame is not None:
                         err, _, rows = detector.update(frame)
-                        if err is not None and rows >= 4:
+                        if err is not None and rows >= 3:
                             start_errors.append(err)
             gyro_bias /= max(n, 1)
             # START CHECK: the car is placed by hand, so it is rarely exactly on the node. If the start
