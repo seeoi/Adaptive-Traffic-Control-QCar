@@ -48,7 +48,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.0.5"
+VERSION = "2.0.6"
 
 # =============================================================================
 # SETTINGS
@@ -100,6 +100,8 @@ FIX_HEADING = 2.5      # How fast the camera corrects the heading (per second).
 
 RUN_TIME = 120         # SAFETY: the program stops by itself after this many seconds.
 RATE_HZ = 200
+READ_MODE = 0          # 0 = read the sensors NOW (latest values). Mode 1 keeps a queue of old readings:
+                       # --motortest showed the wheel speed arriving 2 s LATE with mode 1 (v2.0.6).
 PRINT_HZ = 5
 
 
@@ -199,7 +201,7 @@ def odo_test(seconds=60):
     2) Push it around a LEFT corner (about 90 degrees). The printed turn must be POSITIVE (about +90).
        If it is negative, set GYRO_SIGN = -1.
     """
-    qcar = QCar(readMode=1, frequency=RATE_HZ)
+    qcar = QCar(readMode=READ_MODE, frequency=RATE_HZ)
     stop = threading.Event()
     signal.signal(signal.SIGINT, lambda *_: stop.set())
     with qcar:
@@ -234,7 +236,7 @@ def motor_test():
     sensor takes to react after the push changes (look at the time column).
     """
     steps = [(0.00, 2.0), (0.06, 3.0), (0.07, 3.0), (0.08, 3.0), (0.00, 3.0)]
-    qcar = QCar(readMode=1, frequency=RATE_HZ)
+    qcar = QCar(readMode=READ_MODE, frequency=RATE_HZ)
     stop = threading.Event()
     signal.signal(signal.SIGINT, lambda *_: stop.set())
     print("The car must be ON A BOX with the wheels in the air. Starting in 3 seconds...")
@@ -281,7 +283,7 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
     lidar = lf.LidarWatcher() if use_lidar else None
     if lidar:
         lidar.start()
-    qcar = QCar(readMode=1, frequency=RATE_HZ)
+    qcar = QCar(readMode=READ_MODE, frequency=RATE_HZ)
 
     idx = 0                    # Index of the closest path point.
     steer = 0.0                # Steering sent to the wheels now.

@@ -9,6 +9,16 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.0.6 - 2026-11-09
+- `--motortest` (car 6, wheels in the air) found the real cause of the stop-and-surge: every change of the motor push
+  showed up in the wheel speed exactly 2.0-2.1 s LATER (0.06 at 2.0 s -> speed at 4.1 s; 0.07 at 5.0 -> 7.1;
+  0.08 at 8.0 -> 10.0; 0 at 11.0 -> 13.1). The steps were sharp, so the readings were simply OLD: with
+  `readMode=1` the QCar keeps a queue of readings and our loop read them slower than they arrive (camera work,
+  setup time), so it fell 2 s behind. The gyro was late the same way, which also broke the turns.
+- Fix: `READ_MODE = 0` (read the latest values every time). `lane_follow.py` probably has the same problem
+  (not changed yet).
+- Also measured: push 0.06 -> 0.22 m/s, 0.07 -> 0.29 m/s, 0.08 -> 0.36 m/s (wheels in the air).
+
 ## 2.0.5 - 2026-11-09
 - Motor test of 2.0.4 (`--route 22,9,13 --vmax 0.2`): still stop-and-surge. The log shows the wheel speed staying at
   0 for about 1 s while the push rose to 0.15, then the car surging to 0.6-0.68 m/s while the push was already 0.
