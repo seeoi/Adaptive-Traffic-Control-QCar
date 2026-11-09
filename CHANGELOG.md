@@ -9,6 +9,13 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.7.5 - 2026-11-09
+- Photos + log of a 2.7.3 loop (car 7): (a) on the yellow line in the S-curve before the roundabout = the 5 cm trim of
+  2.7.3 (already removed in 2.7.4); (b) on the OUTER edge on the right side of the roundabout and at the exit to the
+  top street. Log: in the roundabout the steering sat at the limit +0.50 for about 4 s (and +0.48 at the exit) - the
+  car could not turn tighter, so any small error pushed it outward.
+- `MAX_STEER` 0.5 -> 0.6 (the most Quanser's QCar.write accepts). `--circletest` still uses 0.5 by default.
+
 ## 2.7.4 - 2026-11-09
 - Loop with 2.7.3 (car 7): left turn at the crossing perfect, roundabout perfect. But the right curve before the
   roundabout now went too far LEFT (on the yellow line), and after the roundabout exit half the car was out of the

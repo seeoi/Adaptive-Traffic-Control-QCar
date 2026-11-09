@@ -50,7 +50,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.7.4"
+VERSION = "2.7.5"
 
 # =============================================================================
 # SETTINGS
@@ -69,7 +69,9 @@ GYRO_SIGN = 1          # +1 if turning LEFT gives a positive gyro value. Measure
 STEER_SCALE = 0.70
 STEER_BIAS = 0.054     # rad, + = left
 STEER_TRIM = 0.0       # Small constant steering offset (rad), positive = left.
-MAX_STEER = 0.5        # Largest steering angle (rad).
+MAX_STEER = 0.6        # Largest steering command (rad). Quanser's QCar.write allows -0.6..+0.6.
+                       # (2.7.5: was 0.5 - in the roundabout the steering sat at 0.50 for 4 s and the car drifted
+                       # to the outer edge. More room lets it turn a bit tighter there.)
 STEER_RATE = 3.0       # Largest steering change per second (rad/s).
 
 # ---- Speed ---------------------------------------------------------------------
@@ -487,7 +489,7 @@ def odo_test(seconds=60):
     print("If you pushed exactly 1.00 m: TACH_SCALE = 1.00 / distance. Left turn must be POSITIVE.")
 
 
-def circle_test(seconds=7.0, lock=MAX_STEER):
+def circle_test(seconds=7.0, lock=0.5):
     """Drive slow circles at FULL LOCK (left, then right) and print the real circle radius.
     Needs a free floor area of about 2 m x 2 m. Ctrl+C stops."""
     qcar = QCar(readMode=READ_MODE, frequency=RATE_HZ)
@@ -907,7 +909,7 @@ if __name__ == "__main__":
     parser.add_argument("--graph", action="store_true", help="print the nodes and where each can go, then exit")
     parser.add_argument("--odotest", action="store_true", help="motor OFF: push the car, see distance and turn")
     parser.add_argument("--circletest", action="store_true", help="drive slow full-lock circles (2x2 m free floor)")
-    parser.add_argument("--lock", type=float, default=MAX_STEER, help="steering for --circletest (rad, max 0.7)")
+    parser.add_argument("--lock", type=float, default=0.5, help="steering for --circletest (rad, max 0.7)")
     parser.add_argument("--motortest", action="store_true", help="WHEELS IN THE AIR: fixed motor pushes, prints wheel speed")
     parser.add_argument("--dry", action="store_true", help="motor OFF: push the car along the route")
     parser.add_argument("--lidar", action="store_true", help="stop for objects in front")
