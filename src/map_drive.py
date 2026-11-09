@@ -48,7 +48,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.1.0"
+VERSION = "2.1.1"
 
 # =============================================================================
 # SETTINGS
@@ -81,11 +81,14 @@ KI_V = 0.30            # Small speed correction (accumulated), same as lane_foll
 MAX_THROTTLE = 0.11    # Hard limit of the motor command. Never negative (negative = reverse).
 
 # ---- Path following ------------------------------------------------------------
-LOOKAHEAD_MIN = 0.30   # Pure pursuit looks this far ahead at low speed (m)...
-LOOKAHEAD_GAIN = 0.60  # ...plus this many meters per m/s of speed.
+LOOKAHEAD_MIN = 0.22   # Pure pursuit looks this far ahead at low speed (m)...
+LOOKAHEAD_GAIN = 0.50  # ...plus this many meters per m/s of speed. (2.1.1: shorter, because a long look-ahead
+                       # makes the car cut corners - the right turn cut the corner on the right.)
 MIN_RADIUS = 0.90      # Corners are made at least this wide (m). Car 6 at full lock really drives 0.80-0.84 m;
                        # the extra 6-10 cm leaves the steering some room to correct.
                        # Map corners tighter than this are reshaped before driving (see smooth_tight_corners).
+CORNER_SHIFT = 0.0     # Optional: move the path this far (m) to the OUTSIDE of curves. Off: in tests on paper it
+                       # made the turns tighter at the ends, which our car cannot do.
 TIGHT_CURV = 1.0       # A curve tighter than this (1/m, = radius under 1 m) is too tight for our car
                        # (smallest circle about 0.85 m). Then the car looks farther ahead so it starts
 TIGHT_EXTRA = 0.0      # turning a bit earlier (m added to the look-ahead) and does not swing wide.
@@ -174,6 +177,23 @@ def resample(points, spacing=0.01):
     return np.c_[np.interp(new_s, s, points[:, 0]), np.interp(new_s, s, points[:, 1])]
 
 
+def shift_to_outside(points, shift=CORNER_SHIFT):
+    """Move the path a few cm to the OUTSIDE of every curve (straight parts do not move)."""
+    if shift <= 0:
+        return points
+    # Signed amount: + for a left curve, - for a right curve, 1 at radius 1 m or tighter, 0 on straight road.
+    amount = np.clip(curvature_of(points) / 1.0, -1.0, 1.0)
+    for _ in range(2):                                         # Blend in and out smoothly (about 60 cm).
+        amount = np.convolve(amount, np.ones(31) / 31, mode="same")
+    amount[:20] = 0.0
+    amount[-20:] = 0.0
+    d = np.diff(points, axis=0)
+    heading = np.r_[np.arctan2(d[:, 1], d[:, 0]), np.arctan2(d[-1, 1], d[-1, 0])]
+    left_normal = np.c_[-np.sin(heading), np.cos(heading)]
+    # The outside of a left curve is to the RIGHT (minus the left normal), of a right curve to the LEFT.
+    return resample(points - (shift * amount)[:, None] * left_normal)
+
+
 def smooth_tight_corners(points, min_radius=MIN_RADIUS):
     """Reshape corners that are tighter than the car can turn.
 
@@ -259,9 +279,9 @@ class Path:
         # Remove repeated points (they would give a zero distance).
         keep = np.r_[True, np.hypot(*np.diff(points, axis=0).T) > 1e-4]
         points = points[keep]
-        points, shift = smooth_tight_corners(resample(points))
-        if shift > 0.005:
-            print(f"Tight corners rounded for our car (min radius {MIN_RADIUS} m): path moved up to {shift * 100:.0f} cm.")
+        points = shift_to_outside(resample(points))           # 1) optional: open up a bit in curves (off)
+        points, shift = smooth_tight_corners(points)          # 2) no corner tighter than the car can turn
+        print(f"Path adjusted for our car: tight corners rounded to {MIN_RADIUS} m (moved up to {shift * 100:.0f} cm).")
         self.closed = route[0] == route[-1]                     # Starts and ends on the same node = a loop.
         if self.closed and laps > 1:
             points = np.vstack([points] + [points[1:]] * (laps - 1))

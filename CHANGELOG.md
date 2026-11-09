@@ -9,6 +9,16 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.1.1 - 2026-11-09
+- Real test of 2.1.0 `--route 22,9,0`: arrived exactly at the destination, but during the right turn it cut the corner
+  on the RIGHT. (Only 2 cm of reshaping was needed for this corner.) Earlier, in left curves, it touched the yellow
+  line (also the inside).
+- Cause: pure pursuit "cuts corners" more when it looks farther ahead. Look-ahead shortened: 0.30 + 0.60*speed ->
+  0.22 + 0.50*speed (at 0.2 m/s: 0.42 m -> 0.32 m), so the car follows the curve closer and starts the turn a bit
+  later (more "open" before the turn). Not tested on the car yet.
+- Also added an optional `CORNER_SHIFT` (move curves to the outside); it is OFF because on paper it made the ends of
+  the turns tighter than the car can drive.
+
 ## 2.1.0 - 2026-11-09
 - The logs (map_003619/003823/004225.csv) showed the real problem of the right turn: at full lock (-0.50) car 6
   drives a circle of only 0.80-0.84 m radius, but the map's right turn at the central intersection is about 0.72 m.
