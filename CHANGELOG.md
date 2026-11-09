@@ -9,6 +9,13 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.0.1 - 2026-11-09
+- Calibrated on car 6 (qcar-67815) with `--odotest`: pushed 1.00 m -> wheel sensor 1.01 m, so `TACH_SCALE = 1.0` is right.
+  A left turn read +92 deg, so `GYRO_SIGN = +1` is right.
+- Because the wheel sensor is accurate, the wide turns seen before are real: steering 0.40 gave about a 1.06 m
+  circle instead of the 0.60 m the bicycle model predicts. `STEER_GAIN` 1.0 -> 1.7 to make up for it.
+  Smallest possible circle is then about 0.85 m (steering limit 0.5).
+
 ## 2.0.0 - 2026-11-04 (new program: `src/map_drive.py`)
 - NEW map-based driving. The route is a list of map nodes (`--route 9,13`); the Quanser road map turns it into a
   path along the correct lane through intersections and the roundabout. The car tracks its own position with

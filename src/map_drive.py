@@ -48,16 +48,18 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.0.0"
+VERSION = "2.0.1"
 
 # =============================================================================
 # SETTINGS
 # =============================================================================
 # ---- Car and sensors ----------------------------------------------------------
 WHEELBASE = 0.256      # Distance between front and back wheels (m). QCar 2 value.
-TACH_SCALE = 1.0       # Real meters per meter that the wheel sensor says. Measure it with --odotest.
-GYRO_SIGN = 1          # +1 if turning LEFT gives a positive gyro value. Check it with --odotest.
-STEER_GAIN = 1.0       # Multiply the steering by this. Raise it if the car turns too WIDE everywhere.
+TACH_SCALE = 1.0       # Real meters per meter that the wheel sensor says. Measured on car 6: 1.00 m -> 1.01 m, OK.
+GYRO_SIGN = 1          # +1 if turning LEFT gives a positive gyro value. Measured on car 6: left turn = +92 deg, OK.
+STEER_GAIN = 1.7       # Multiply the steering by this. The real wheels turn LESS than asked: on car 6,
+                       # steering 0.40 gave a 1.06 m circle, but the math says 0.60 m (0.256 / tan 0.40).
+                       # 0.60 / 1.06 = 0.59, and 1 / 0.59 = 1.7. Raise it if the car turns too WIDE.
 STEER_TRIM = 0.0       # Small constant steering offset (rad), positive = left.
 MAX_STEER = 0.5        # Largest steering angle (rad).
 STEER_RATE = 3.0       # Largest steering change per second (rad/s).
