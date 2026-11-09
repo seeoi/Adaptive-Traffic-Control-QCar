@@ -9,6 +9,12 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2026-11-09 - FIRST SUCCESSFUL MAP DRIVE (2.0.6, car 6)
+- `--route 22,9,13 --vmax 0.2` with the motor: drove down the left street, the curve, crossed the intersection and
+  turned LEFT into the correct lane, stopping at node 13 ("lo hizo perfecto"). Speed steady at 0.18-0.22 m/s
+  (push 0.067-0.078), estimate within +-5 cm of the path the whole way, loop 130-150 Hz with the camera.
+- Small issue: in the first (left) curve the car touched the yellow line on its left (estimate +3..+5 cm left).
+
 ## 2.0.6 / lane_follow 1.2.3 - 2026-11-09
 - `--motortest` again with `READ_MODE = 0`: the wheel speed now reacts within 0.1 s (0.06 -> 0.24 m/s,
   0.07 -> 0.31 m/s, 0.08 -> 0.37 m/s, push 0 -> stopped at once; wheels in the air). The 2 s lag is gone.
