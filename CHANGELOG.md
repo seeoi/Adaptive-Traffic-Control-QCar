@@ -9,6 +9,15 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.7.6 - 2026-11-09
+- 2.7.5 loop (car 7) + 13 photos: better ("siento que mejoró"), steering in the roundabout now peaks at 0.57 (not stuck at
+  the limit). Same errors but smaller; worst: after the roundabout, top street, half the car out on the right.
+- Pattern in the photos: on every EAST-WEST road the car is ~8-10 cm too far NORTH (top street on the outer curb,
+  top-left corner outside, S-curve and before the crossing on the yellow), while the log says on the path (1-2 cm).
+  North-south roads are fine. `--whereami` at node 9 also read y 8 cm low. => the LiDAR frame is shifted in y (car a
+  few cm off along the road during `--gpscal`, which faces -90 = along y).
+- Fix: `GPS_SHIFT_Y` = +0.08 m added to every LiDAR y (start, driving, --whereami).
+
 ## 2.7.5 - 2026-11-09
 - Photos + log of a 2.7.3 loop (car 7): (a) on the yellow line in the S-curve before the roundabout = the 5 cm trim of
   2.7.3 (already removed in 2.7.4); (b) on the OUTER edge on the right side of the roundabout and at the exit to the

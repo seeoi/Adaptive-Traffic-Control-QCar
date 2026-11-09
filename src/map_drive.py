@@ -50,7 +50,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.7.5"
+VERSION = "2.7.6"
 
 # =============================================================================
 # SETTINGS
@@ -124,6 +124,10 @@ GPS_GAIN = 0.15        # Each LiDAR position moves our estimate this part of the
 GPS_GAIN_HEADING = 0.10
 GPS_OFFSET = 0.16      # The LiDAR position is this far (m) IN FRONT of the rear axle (our "car position").
                        # Measured on car 7 (2.7.2): without it the car cut every curve to the inside by 5-8 cm.
+GPS_SHIFT_Y = 0.08     # Added to every LiDAR y (m). 2.7.6: photos showed the car ~8-10 cm too far NORTH (up on the
+                       # map) on every east-west road (top street half out, on the yellow before the crossing and in
+                       # the S-curve) while the log said 1-2 cm; --whereami at node 9 also read y 8 cm too low.
+                       # Most likely the car was a few cm off along the road at --gpscal. Set 0 after a new --gpscal.
 GPS_DELAY = 0.0        # The LiDAR position is this old (s) when it arrives. It is compared with where WE thought
                        # we were that long ago, not now (otherwise in curves it drags the car to the inside).
 GPS_GATE = 0.35        # Ignore a LiDAR position farther than this (m) from our estimate (a bad match).
@@ -581,7 +585,7 @@ def read_gps_pose(gps):
     """LiDAR position moved back to the rear axle: (x, y, heading)."""
     gth = float(gps.orientation[2])
     return (float(gps.position[0]) - GPS_OFFSET * np.cos(gth),
-            float(gps.position[1]) - GPS_OFFSET * np.sin(gth), gth)
+            float(gps.position[1]) - GPS_OFFSET * np.sin(gth) + GPS_SHIFT_Y, gth)
 
 
 def where_am_i(seconds=30):
