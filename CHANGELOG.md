@@ -9,6 +9,12 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.0.8 - 2026-11-09
+- Real test `--route 22,9,0 --vmax 0.2` (2.0.7): the RIGHT turn worked, but it was a bit wide: the steering stayed at
+  the limit (-0.50) through the whole turn and the front-left wheel just touched the yellow line.
+- Tight corners (curvature over 1/m) now get 0.15 m more look-ahead, so the car starts turning a little earlier.
+  Not tested on the car yet.
+
 ## 2026-11-09 - 2.0.7 works STRAIGHT through the intersection
 - `--route 22,9,7 --vmax 0.2` on car 6: went straight across the intersection and stopped exactly at node 7
   ("esta vez sí fue derecho y paró exactamente donde debía"). After 1.5 m with no yellow line the camera found the

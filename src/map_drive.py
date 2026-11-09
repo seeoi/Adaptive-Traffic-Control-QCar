@@ -48,7 +48,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.0.7"
+VERSION = "2.0.8"
 
 # =============================================================================
 # SETTINGS
@@ -83,6 +83,9 @@ MAX_THROTTLE = 0.11    # Hard limit of the motor command. Never negative (negati
 # ---- Path following ------------------------------------------------------------
 LOOKAHEAD_MIN = 0.30   # Pure pursuit looks this far ahead at low speed (m)...
 LOOKAHEAD_GAIN = 0.60  # ...plus this many meters per m/s of speed.
+TIGHT_CURV = 1.0       # A curve tighter than this (1/m, = radius under 1 m) is too tight for our car
+                       # (smallest circle about 0.85 m). Then the car looks farther ahead so it starts
+TIGHT_EXTRA = 0.15     # turning a bit earlier (m added to the look-ahead) and does not swing wide.
 OFF_PATH_STOP = 0.40   # SAFETY: if the estimate is this far (m) from the path, stop.
 
 # ---- Camera corrections ----------------------------------------------------------
@@ -351,6 +354,9 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
 
                 # Map steering = pure pursuit toward a point ahead on the path.
                 lookahead = LOOKAHEAD_MIN + LOOKAHEAD_GAIN * max(speed, 0.0)
+                i_near = path.index_at(path.s[idx] + 0.6)
+                if i_near > idx and np.max(np.abs(path.curv[idx:i_near + 1])) > TIGHT_CURV:
+                    lookahead += TIGHT_EXTRA         # Tight corner ahead: start turning earlier.
                 target = path.xy[path.index_at(path.s[idx] + lookahead)]
                 alpha = wrap(np.arctan2(target[1] - y, target[0] - x) - th)
                 map_steer = float(np.arctan2(2 * WHEELBASE * np.sin(alpha), lookahead)) * STEER_GAIN
