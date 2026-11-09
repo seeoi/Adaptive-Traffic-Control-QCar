@@ -49,7 +49,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.6.1"
+VERSION = "2.6.2"
 
 # =============================================================================
 # SETTINGS
@@ -97,6 +97,8 @@ MIN_RADIUS_RIGHT = 0.92  # Right corners at least this wide (m). Car 6 at full l
                        # Map corners tighter than this are reshaped before driving (see smooth_tight_corners).
 CORNER_SHIFT = 0.0     # Optional: move the path this far (m) to the OUTSIDE of curves. Off: in tests on paper it
                        # made the turns tighter at the ends, which our car cannot do.
+MAX_RESHAPE = 0.10     # Never move the path more than this (m) when rounding a corner (2.6.2: a 61 cm cut
+                       # across the roundabout entry sent the car straight off the curve).
 TIGHT_CURV = 1.0       # A curve tighter than this (1/m, = radius under 1 m) is too tight for our car
                        # (smallest circle about 0.85 m). Then the car looks farther ahead so it starts
 TIGHT_EXTRA = 0.0      # turning a bit earlier (m added to the look-ahead) and does not swing wide.
@@ -342,8 +344,13 @@ def smooth_tight_corners(points):
         steps = max(int(radius * abs(turn) / 0.01), 2)
         angs = ang0 + side * np.linspace(0.0, abs(turn), steps)
         arc = np.c_[center[0] + radius * np.cos(angs), center[1] + radius * np.sin(angs)]
+        this_shift = 0.0
         for q in arc[::5]:
-            shift = max(shift, float(np.min(np.hypot(*(points[k0:k1 + 1] - q).T))))
+            this_shift = max(this_shift, float(np.min(np.hypot(*(points[k0:k1 + 1] - q).T))))
+        if this_shift > MAX_RESHAPE or k1 <= k0:
+            i = i1 + 1                       # This "corner" is really several curves (e.g. the roundabout
+            continue                         # entry): rounding it would cut far across the road. Keep the map.
+        shift = max(shift, this_shift)
         pieces.append(points[start:k0])
         pieces.append(arc)
         start = k1 + 1

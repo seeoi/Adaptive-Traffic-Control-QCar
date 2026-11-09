@@ -15,6 +15,14 @@ Version numbers: `MAJOR.MINOR.PATCH`
   the start ("lo hizo muy bien"). Only issue: slightly wide (outside) in the roundabout; the steering is close to its left
   limit there (+0.49 of 0.50). The start check did not run (the camera saw the line in only 3 of 5 rows).
 
+## 2.6.2 - 2026-11-09
+- First loop with car 7 (2.6.1): the program printed "path moved up to 61 cm". With car 7's smaller right radius the
+  corner rounding treated the roundabout entry (right curve + left curves) as ONE corner and cut 61 cm across it, so
+  the car went straight in the curve before the roundabout. Fix: a rounding that would move the path more than
+  `MAX_RESHAPE` (10 cm) is skipped.
+- Same run: the camera was never used (on the left street the yellow line is dashed, so the camera never "locks");
+  near node 22 the car touched the yellow line.
+
 ## 2.6.1 - 2026-11-09
 - Car 7 = qcar-67807 (192.168.2.45) measured: 1.00 m pushed -> 1.00 m (TACH_SCALE 1.0); full-lock circles LEFT 0.63 m,
   RIGHT 0.77 m (car 6: 0.60 / 0.84). Less lopsided than car 6. Profile: STEER_SCALE 0.707, STEER_BIAS 0.032,
