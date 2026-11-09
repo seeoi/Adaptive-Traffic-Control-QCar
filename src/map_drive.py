@@ -48,7 +48,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.0.3"
+VERSION = "2.0.4"
 
 # =============================================================================
 # SETTINGS
@@ -71,8 +71,13 @@ A_LAT = 0.20           # Allowed sideways acceleration in a curve (m/s^2). Lower
 PREVIEW = 0.80         # How far ahead (m) the car looks for curves to slow down in time.
 ACCEL = 0.25           # Speed may grow by at most this much per second.
 DECEL = 0.50           # Speed may drop by at most this much per second (stops are immediate).
-THROTTLE_FF0 = 0.035   # Motor push needed to just start rolling (feed-forward, from our logs).
-THROTTLE_FF1 = 0.17    # Extra push per m/s of speed (feed-forward, from our logs).
+THROTTLE_FF0 = 0.045   # Motor push needed to keep rolling slowly (feed-forward).
+THROTTLE_FF1 = 0.08    # Extra push per m/s of speed (feed-forward). Lowered in 2.0.4: the car ran away.
+OVERSPEED = 0.06       # If the car is this much faster than wanted (m/s), cut the motor until it slows.
+STALL_S = 0.6          # If the car should move but has been stopped this long...
+STALL_PUSH = 0.03      # ...add this much extra push (it grows slowly while stalled).
+V_LOST = 0.15          # Drive this slowly when the estimate is far from the path (unsure where we are).
+UNSURE_M = 0.10        # "Far from the path" = more than this many meters.
 KP_V = 0.15            # Speed correction (proportional).
 KI_V = 0.30            # Speed correction (accumulated).
 MAX_THROTTLE = 0.15    # Hard limit of the motor command. Never negative (negative = reverse).
@@ -94,7 +99,6 @@ CAM_STEER_MIX = 0.7    # 0 = map steering only, 1 = camera only (when the camera
 KP_CAM = 0.9           # Camera steering strength (same idea as KP in lane_follow.py).
 FIX_LATERAL = 2.5      # How fast the camera corrects the sideways position (per second).
 FIX_HEADING = 2.5      # How fast the camera corrects the heading (per second).
-FIX_ALONG = 1.0        # How fast the position ALONG the path is corrected in curves (per second).
 
 RUN_TIME = 120         # SAFETY: the program stops by itself after this many seconds.
 RATE_HZ = 200
@@ -253,6 +257,8 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
     steer = 0.0                # Steering sent to the wheels now.
     speed_cmd = 0.0            # Smoothed speed command.
     speed_integral = 0.0
+    stalled_for = 0.0          # How long the car has been stuck at zero speed while it should move.
+    throttle = 0.0
     gyro_bias = 0.0
     lock_since = None          # Since when the camera sees the yellow line well.
     lane_error = None
@@ -335,13 +341,8 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                     y += FIX_LATERAL * cam_dt * innovation * np.cos(h)
                     # b) Heading: if the point ahead is off, the car is pointing a bit wrong.
                     th = wrap(th + FIX_HEADING * cam_dt * innovation / CAM_AHEAD)
-                    # c) In a curve, the place where the road heading equals our heading is where we are.
-                    i_lo, i_hi = path.index_at(path.s[idx] - 0.4), path.index_at(path.s[idx] + 0.4)
-                    if abs(wrap(path.heading[i_hi] - path.heading[i_lo])) > np.radians(25):
-                        window = slice(i_lo, i_hi + 1)
-                        j = i_lo + int(np.argmin(np.abs(wrap(path.heading[window] - th))))
-                        x += FIX_ALONG * cam_dt * (path.xy[j, 0] - x)
-                        y += FIX_ALONG * cam_dt * (path.xy[j, 1] - y)
+                    # (No correction ALONG the path: the wheel sensor is accurate to about 1 %, and the old
+                    #  along-path correction froze the estimate when the car was off course - v2.0.4.)
                     steer_target = (1 - CAM_STEER_MIX) * map_steer + CAM_STEER_MIX * camera_steer
                     mode = "MAP+CAM"
                 else:
@@ -367,6 +368,8 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                 # Safety checks: each one can force a stop.
                 if use_camera and now - last_image > lf.CAMERA_TIMEOUT:
                     v_target, mode = 0.0, "CAMERA_STOPPED"
+                if abs(cte) > UNSURE_M:
+                    v_target = min(v_target, V_LOST)
                 if abs(cte) > OFF_PATH_STOP:
                     v_target, mode = 0.0, "OFF_PATH"
                 front = lidar.front if lidar else np.inf
@@ -379,6 +382,10 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                         v_target, mode = 0.0, mode + "+OBSTACLE"
 
                 # ---- 5) THROTTLE: smooth speed command + feed-forward + small PI -----
+                if speed < 0.03 and v_target > 0.0:
+                    stalled_for += dt
+                else:
+                    stalled_for = 0.0
                 if v_target <= 0.0:
                     speed_cmd, speed_integral, throttle = 0.0, 0.0, 0.0
                 else:
@@ -388,8 +395,12 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                     error = speed_cmd - speed
                     speed_integral = float(np.clip(speed_integral + error * dt, -0.05, 0.05))
                     feed_forward = THROTTLE_FF0 + THROTTLE_FF1 * speed_cmd / TACH_SCALE
-                    throttle = float(np.clip(feed_forward + KP_V * error + KI_V * speed_integral,
+                    stall_extra = STALL_PUSH * min(stalled_for / STALL_S, 2.0) if stalled_for > STALL_S else 0.0
+                    throttle = float(np.clip(feed_forward + KP_V * error + KI_V * speed_integral + stall_extra,
                                              0.0, MAX_THROTTLE))
+                    if speed > v_target + OVERSPEED:
+                        throttle = 0.0                       # Too fast: let it roll and slow down.
+                        speed_integral = min(speed_integral, 0.0)
                 if dry_run:
                     throttle = 0.0
                 braking = v_target < speed - 0.05
@@ -407,7 +418,7 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                     t_print = now
                     print(f"{now - t_start:6.1f}s {mode:<16} x={x:+.2f} y={y:+.2f} "
                           f"head={np.degrees(th):+5.0f} s={path.s[idx]:5.2f}/{path.length:.1f}m "
-                          f"off={cte * 100:+4.0f}cm speed={speed:.2f}/{v_target:.2f} "
+                          f"off={cte * 100:+4.0f}cm speed={speed:.2f}/{v_target:.2f} thr={throttle:.3f} "
                           f"steer={steer:+.2f} yellow={yellow_rows}/5")
             qcar.write(throttle=0, steering=0)
     finally:

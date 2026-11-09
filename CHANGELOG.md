@@ -9,6 +9,18 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.0.4 - 2026-11-09
+- First MOTOR test, `--route 22,9,13 --vmax 0.25` on car 6: the street and the curve were fine (camera locked,
+  estimate within +-7 cm), but at the intersection it went wrong. Problems seen in the log:
+  1. Speed ran away: up to 0.53 m/s with a 0.25 limit, then the car stopped dead for 1-1.5 s, then surged again.
+  2. During a surge at the intersection (no yellow line) the estimate drifted to 19 cm off the path.
+  3. In a curve the "along the path" camera correction pinned the estimate in place (x, y frozen while the
+     wheels read 0.5 m/s), so the car lost track of where it was.
+- Fixes: removed the along-path correction (the wheel sensor is accurate to 1 %); much smaller feed-forward
+  throttle; the motor is cut when the car is 0.06 m/s faster than wanted; a small extra push when the car is stuck;
+  the car slows to 0.15 m/s when its estimate is more than 10 cm from the path. The status line shows `thr=`.
+- Check the battery: stop-and-go like this can also be low voltage.
+
 ## 2.0.3 - 2026-11-09
 - Real test `--route 22,9,13 --dry` on car 6 (pushed by hand, wheels steering themselves): WORKED. The camera
   locked on the yellow line along the left street and the curve (estimate within +-4 cm), then the car crossed
