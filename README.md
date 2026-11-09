@@ -42,6 +42,9 @@ Stop with **Ctrl+C**, never Ctrl+Z (Ctrl+Z only pauses it and leaves the camera 
 To stop a stuck program from another terminal: `pkill -9 -f lane_follow.py`.
 To download debug pictures to the laptop: `scp -r nvidia@192.168.2.183:~/debug .`
 
+**Safety:** If the SSH connection drops (Wi-Fi), the car may KEEP DRIVING until `--time` runs out, because Ctrl+C no
+longer reaches it. Always use a short `--time` and stay next to the car, ready to pick it up.
+
 ## Map driving (v2.0.0) - first tests, in this order
 
 All from the repo folder in PowerShell, laptop on the car Wi-Fi. Map node numbers: see `--graph`.

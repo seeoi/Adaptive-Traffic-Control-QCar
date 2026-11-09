@@ -9,6 +9,16 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.3.0 - 2026-11-09
+- Loop test of 2.2.1 (2 laps): 1st roundabout: entering it cut into the white island a bit, then went wide outside;
+  2nd lap: drove on the yellow line near node 22 and went out on the right after the left curve; the 2nd pass through the
+  roundabout was good. The SSH display dropped at 34 s but the car kept driving (see the warning in the README).
+- Pattern over all tests: the parts driven by the MAP ONLY (intersection 1.5 m, roundabout 2.5 m) are accurate; the
+  5-10 cm errors appear where the camera is in charge in curves and merges (it guesses the lane center from the yellow
+  line, which is wrong in curves and near the yellow island triangles).
+- The camera is now used only on almost straight road (`CAM_MAX_CURV` 0.35 1/m, checked 0.5 m behind to 0.7 m ahead),
+  both for steering and for correcting the position. Curves are driven by the map + wheels + gyro.
+
 ## 2.2.1 - 2026-11-09
 - First full loop with the roundabout (`--route 22,9,13,19,17,20,22 --laps 2 --vmax 0.2`, 2.2.0): the left street, the
   curve and the LEFT turn at the intersection were fine; it entered the roundabout and went around it, but about 15 cm
