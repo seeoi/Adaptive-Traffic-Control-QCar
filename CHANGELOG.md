@@ -9,6 +9,10 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.0.10 - 2026-11-09
+- Undid 2.0.9: in the simulator, trusting the camera less made the car WORSE (12-15 cm instead of 8-10 cm), even with
+  a biased camera. Back to `CAM_STEER_MIX` 0.7 and `FIX_LATERAL` 2.5 until the real logs (map_*.csv) show the cause.
+
 ## 2.0.9 - 2026-11-09
 - Real test of 2.0.8 `--route 22,9,0`: the right turn ended MORE to the left (closer to the yellow line), not less.
   Pattern in all runs: in the curve before the intersection the car rides left (touches the yellow line) while the

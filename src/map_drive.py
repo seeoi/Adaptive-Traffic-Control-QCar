@@ -48,7 +48,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.0.9"
+VERSION = "2.0.10"
 
 # =============================================================================
 # SETTINGS
@@ -96,10 +96,9 @@ CAM_M_PER_UNIT = 0.36  # Lane error 1.0 = this many meters sideways (lane half =
 CAM_AHEAD = 0.40       # The camera measures the lane about this far in front of the car (m).
 CAM_GATE = 0.15        # Ignore a camera reading that disagrees with the estimate by more than this (m):
                        # it is probably another yellow line (for example at an intersection).
-CAM_STEER_MIX = 0.3    # 0 = map steering only, 1 = camera only (when the camera is trusted). Lowered in 2.0.9:
-                       # the camera's lane center seems pulled toward the yellow line (car touches it in curves).
+CAM_STEER_MIX = 0.7    # 0 = map steering only, 1 = camera only (when the camera is trusted).
 KP_CAM = 0.9           # Camera steering strength (same idea as KP in lane_follow.py).
-FIX_LATERAL = 0.8      # How fast the camera corrects the sideways position (per second).
+FIX_LATERAL = 2.5      # How fast the camera corrects the sideways position (per second).
 ALIGN_HEADING = 0.5    # On a STRAIGHT road, while the camera keeps the car centered, slowly turn the heading
                        # estimate toward the road direction (per second). The gyro itself is very accurate
                        # (one full turn by hand read 359.3 deg), so this only removes the start error.
