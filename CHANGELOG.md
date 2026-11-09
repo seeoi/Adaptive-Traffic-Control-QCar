@@ -9,6 +9,12 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2026-11-09 - MILESTONE: 3 LAPS IN A ROW WITH THE LIDAR POSITION (2.7.7, car 7)
+- `--route 22,9,13,19,17,20,22 --laps 3 --vmax 0.2 --time 240 --gps`: 40.6 m in 206 s, left turn at the crossing,
+  roundabout and back, three times, and it stopped at the start ("dio las 3 vueltas a la perfección"). Log: never more
+  than 4 cm from the path. Recipe: QCarGPS (LiDAR) + wheels/gyro, `GPS_OFFSET` 0.16, `GPS_SHIFT_Y` 0.08, `MAX_STEER` 0.6,
+  one 3 cm lane trim in the roundabout.
+
 ## 2.7.7 - 2026-11-09
 - Two loops with 2.7.6 (car 7), almost identical: "me gustaron mucho ... todo lo demás está a la perfección". The y shift
   fixed the top street, the S-curve and the crossing.
