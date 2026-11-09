@@ -9,6 +9,11 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2026-11-09 - 2.0.7 works STRAIGHT through the intersection
+- `--route 22,9,7 --vmax 0.2` on car 6: went straight across the intersection and stopped exactly at node 7
+  ("esta vez sí fue derecho y paró exactamente donde debía"). After 1.5 m with no yellow line the camera found the
+  east street's line again and the estimate was only 3-6 cm off. In the curve the estimate is still 5-8 cm to the left.
+
 ## 2.0.7 - 2026-11-09
 - Real test `--route 22,9,7` (straight through the intersection): fine until the curve ended, then in the
   intersection (no yellow line) the car drove at about 8-10 deg to the RIGHT while it believed it was going
