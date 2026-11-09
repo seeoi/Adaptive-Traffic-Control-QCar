@@ -20,7 +20,7 @@ Traffic lights, V2I, multiple cars and external cameras come after that.
 ## Quick start (about 5 minutes)
 
 1. Connect your laptop to the cars' Wi-Fi network (`Quanser_UVS_209-5G`, no internet). Read the car's IP on its
-   screen: it can change after a restart. Cars we used: car 7 at `192.168.2.183`, car 5 = `nvidia@qcar-67798`
+   screen: it can change after a restart. Cars we used: car 6 (`qcar-67815`) at `192.168.2.183`, car 5 = `nvidia@qcar-67798`
    at `192.168.2.217` (user and password: `nvidia`). Type the FULL IP.
 2. Copy the script from your laptop to the car (run this on the LAPTOP):
    `scp src/lane_follow.py nvidia@192.168.2.183:~/`

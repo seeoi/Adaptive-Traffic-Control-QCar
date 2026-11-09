@@ -8,7 +8,7 @@
 #
 # Change the IP below to the car you are using. It is shown on the car's screen
 # and it can change after the car is restarted.
-#   Car 7 = 192.168.2.183   (current setting)
+#   Car 6 (qcar-67815) = 192.168.2.183   (current setting)
 #   Car 5 = 192.168.2.217
 $CarIP = "192.168.2.183"
 

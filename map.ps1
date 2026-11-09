@@ -8,7 +8,7 @@
 # Everything you type after map.ps1 is passed to map_drive.py as options.
 #
 # Change the IP below to the car you are using (it is shown on the car's screen).
-#   Car 7 (qcar-67815) = 192.168.2.183   (current setting)
+#   Car 6 (qcar-67815) = 192.168.2.183   (current setting)
 #   Car 5 (qcar-67798) = 192.168.2.217
 $CarIP = "192.168.2.183"
 
