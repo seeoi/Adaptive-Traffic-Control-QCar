@@ -49,7 +49,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.6.2"
+VERSION = "2.6.3"
 
 # =============================================================================
 # SETTINGS
@@ -106,8 +106,10 @@ OFF_PATH_STOP = 0.40   # SAFETY: if the estimate is this far (m) from the path, 
 
 # ---- Camera corrections ----------------------------------------------------------
 USE_CAMERA = True      # False = drive with the map only (also: --nocam).
-CAM_MIN_ROWS = 3       # The camera is "locked" when it sees the yellow line in this many of 5 rows...
-CAM_LOCK_S = 0.3       # ...for this long.
+CAM_MIN_ROWS = 2.0     # The camera is "locked" when it sees the yellow line in this many of 5 rows ON AVERAGE...
+CAM_LOCK_S = 0.3       # ...for this long. (2.6.3: an average, because on a DASHED yellow line the count jumps
+CAM_ROWS_SMOOTH = 0.15 # 1-3-1-3 from frame to frame and the old "3 rows every frame" rule never locked.)
+                       # CAM_ROWS_SMOOTH = how fast the average follows each new frame (0..1).
 CAM_M_PER_UNIT = 0.36  # Lane error 1.0 = this many meters sideways (lane half = 0.135 m = about 155 pixels).
 CAM_AHEAD = 0.40       # The camera measures the lane about this far in front of the car (m).
 CAM_GATE = 0.20        # Ignore a camera reading that disagrees with the estimate by more than this (m):
@@ -551,6 +553,7 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
     lock_since = None          # Since when the camera sees the yellow line well.
     lane_error = None
     yellow_rows = 0
+    yellow_avg = 0.0           # Smoothed number of rows that see the yellow line (handles dashed lines).
     t_cam = time.time()        # Time of the last camera frame (to scale the corrections).
     blocked = False
     last_image = time.time() + 1.0
@@ -577,7 +580,7 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                     frame = lf.grab_frame(cameras)
                     if frame is not None:
                         err, _, rows = detector.update(frame)
-                        if err is not None and rows >= 3:
+                        if err is not None and rows >= 2:
                             start_errors.append(err)
             gyro_bias /= max(n, 1)
             # START CHECK: the car is placed by hand, so it is rarely exactly on the node. If the start
@@ -620,7 +623,8 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                 if image is not None:
                     last_image = now
                     lane_error, _, yellow_rows = detector.update(image)
-                    if yellow_rows >= CAM_MIN_ROWS and lane_error is not None:
+                    yellow_avg += CAM_ROWS_SMOOTH * (yellow_rows - yellow_avg)
+                    if yellow_avg >= CAM_MIN_ROWS:
                         lock_since = lock_since or now
                     else:
                         lock_since = None

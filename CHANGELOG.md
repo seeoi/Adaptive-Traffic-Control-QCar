@@ -9,6 +9,15 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.6.3 - 2026-11-09
+- Car 7 loop with 2.6.2: rounding fixed ("moved up to 2 cm"), but after the first LEFT curve the car was on the yellow
+  line (middle of the street) while the estimate said off=0 cm. The map-only estimate was ~15 cm wrong - most likely a
+  few degrees of heading error from placing the car by hand (5 deg over 2.3 m = ~20 cm). The camera should fix that on
+  the first straight, but it was NEVER used: the yellow rows jumped 3,1,3,1 (dashed line) and the lock needed 3 rows in
+  EVERY frame for 0.3 s.
+- Fix: the lock now uses a smoothed AVERAGE of the yellow rows (`CAM_MIN_ROWS` 2.0, `CAM_ROWS_SMOOTH` 0.15), so a
+  dashed line also locks. The start check accepts frames with 2+ yellow rows (was 3). The 20 cm gate still protects.
+
 ## 2026-11-09 - FIRST FULL LOOP WITH THE ROUNDABOUT (2.3.1, car 6)
 - `--route 22,9,13,19,17,20,22 --vmax 0.2`: the whole 13.5 m loop in 68 s - left street, curve, LEFT at the intersection,
   central street, into the roundabout, around it, out to the top street, back down the left street - and it stopped at
