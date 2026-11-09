@@ -48,7 +48,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.3.2"
+VERSION = "2.4.0"
 
 # =============================================================================
 # SETTINGS
@@ -121,11 +121,51 @@ ALIGN_HEADING = 0.5    # On a STRAIGHT road, while the camera keeps the car cent
                        # estimate toward the road direction (per second). The gyro itself is very accurate
                        # (one full turn by hand read 359.3 deg), so this only removes the start error.
 
+LINK_TIMEOUT = 2.0     # SAFETY: stop if the laptop has not confirmed our messages for this many seconds.
 RUN_TIME = 120         # SAFETY: the program stops by itself after this many seconds.
 RATE_HZ = 200
 READ_MODE = 0          # 0 = read the sensors NOW (latest values). Mode 1 keeps a queue of old readings:
                        # --motortest showed the wheel speed arriving 2 s LATE with mode 1 (v2.0.6).
 PRINT_HZ = 5
+
+
+class LinkWatch:
+    """SAFETY: stop the car if the laptop's SSH connection dies.
+
+    When the Wi-Fi drops, Ctrl+C can no longer reach the car, and Linux may not notice the dead connection
+    for minutes, so the car kept driving (it happened twice). We print a status line 5 times per second;
+    on a live connection the laptop confirms (ACKs) it within milliseconds. Here we look at the SSH
+    connection in /proc/net/tcp: if sent data stays unconfirmed for LINK_TIMEOUT seconds, the link is dead.
+    Running directly on the car (no SSH) turns this check off.
+    """
+
+    def __init__(self):
+        self.key = None
+        parts = os.environ.get("SSH_CLIENT", "").split()
+        if len(parts) >= 3:
+            ip, port, local = parts[0], int(parts[1]), int(parts[2])
+            ip_hex = "".join(f"{int(b):02X}" for b in reversed(ip.split(".")))   # Linux writes it backwards.
+            self.key = (f"{ip_hex}:{port:04X}", f":{local:04X}")
+        self.stuck_since = None
+
+    def dead(self, now, timeout):
+        if self.key is None:
+            return False
+        try:
+            with open("/proc/net/tcp") as f:
+                lines = f.readlines()[1:]
+        except OSError:
+            return False
+        for line in lines:
+            cols = line.split()
+            if cols[2] == self.key[0] and cols[1].endswith(self.key[1]):
+                waiting = int(cols[4].split(":")[0], 16)     # bytes sent but not yet confirmed
+                if waiting > 0:
+                    self.stuck_since = self.stuck_since or now
+                else:
+                    self.stuck_since = None
+                return self.stuck_since is not None and now - self.stuck_since > timeout
+        return False
 
 
 def wrap(angle):
@@ -518,6 +558,9 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
             print("DRY RUN: motor is OFF, push the car along the route." if dry_run
                   else "Driving. Press Ctrl+C to stop.")
 
+            link = LinkWatch()
+            if link.key is None:
+                print("Link check OFF (not started over SSH).")
             t_start = t_prev = time.time()
             while not quit_flag.is_set() and time.time() - t_start < run_time:
                 now = time.time()
@@ -646,6 +689,12 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time):
                 braking = v_target < speed - 0.05
                 qcar.write(throttle=throttle, steering=steer + STEER_TRIM,
                            LEDs=np.array([0, 0, 0, 0, int(braking), int(braking), 1, 1]))
+
+                # ---- SAFETY: is the laptop still connected? ------------------------
+                if link.dead(now, LINK_TIMEOUT):
+                    qcar.write(throttle=0, steering=0)
+                    print("Lost the connection to the laptop - stopping the car.")
+                    break
 
                 # ---- 6) LOG and STATUS -------------------------------------------
                 log.writerow([f"{now - t_start:.2f}", f"{x:.3f}", f"{y:.3f}", f"{np.degrees(th):.1f}",

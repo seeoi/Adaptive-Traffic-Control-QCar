@@ -15,6 +15,15 @@ Version numbers: `MAJOR.MINOR.PATCH`
   the start ("lo hizo muy bien"). Only issue: slightly wide (outside) in the roundabout; the steering is close to its left
   limit there (+0.49 of 0.50). The start check did not run (the camera saw the line in only 3 of 5 rows).
 
+## 2.4.0 - 2026-11-09
+- SAFETY: the SSH connection dropped again after 3 s of a 3-lap run and the car kept driving for minutes (Ctrl+C could
+  not reach it). New `LinkWatch`: the car checks its SSH connection in /proc/net/tcp; if the laptop has not confirmed
+  the status lines for `LINK_TIMEOUT` (2 s), the car stops and the run ends.
+- Same 3-lap run (student's report): lap 1 left turn a bit wide to the right; after the roundabout the car drove ON the
+  yellow line of the top street; lap 2 wider still at the intersection, roundabout fine, then fully in the LEFT lane of
+  the top street after the roundabout, recovering in the curve at node 22. The estimate is wrong by up to a lane width
+  after the roundabout; waiting for the log (latest map_*.csv) to see why.
+
 ## 2.3.2 - 2026-11-09
 - Start check now accepts 3 of 5 rows (it needed 4).
 
