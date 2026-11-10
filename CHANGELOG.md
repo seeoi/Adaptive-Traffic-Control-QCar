@@ -9,6 +9,13 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.7.9 - 2026-11-09
+- Route C with 2.7.8 (2 runs): exit of the roundabout better (max 7 cm wide, was 13), but (1) on the top street the car
+  rode on the yellow line and made a sudden swerve LEFT just before the roundabout, (2) still a bit wide at the exit.
+- Log: on the top street the camera locked and moved the estimate 5 cm (steer jumped to +0.24): its lane-center guess
+  is worse than the LiDAR position. With `--gps` the camera is no longer used for steering or corrections.
+- Racing-line trim made longer and softer: center (0.10, 4.23), radius 0.8 m, 5 cm.
+
 ## 2.7.8 - 2026-11-09
 - First routes in the OTHER direction (car 7, --gps). Route C `23,21,16,18,11,12,8,23` (reverse loop, RIGHT at the
   crossing): works, but leaving the roundabout toward the central street the car invaded the other lane on the left

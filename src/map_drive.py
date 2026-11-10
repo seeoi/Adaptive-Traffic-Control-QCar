@@ -50,7 +50,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.7.8"
+VERSION = "2.7.9"
 
 # =============================================================================
 # SETTINGS
@@ -117,7 +117,7 @@ LANE_TRIMS = [
     # a ~150 deg RIGHT turn of radius 0.68 m, but car 7 turns right no tighter than ~0.77 m (steering stuck at -0.60
     # for 6 s, exit 13 cm wide into the other lane). Like a racing line: enter a bit wide (6 cm LEFT just before the
     # turn) so the car starts turning earlier and exits less wide. Simulation: exit 17 -> 10 cm, entry +4 cm.
-    (0.25, 4.23, 0.50, -10, 0.06),
+    (0.10, 4.23, 0.80, -10, 0.05),   # 2.7.9: longer and softer (0.5 m / 6 cm felt like a sudden swerve)
 ]
 OFF_PATH_STOP = 0.40   # SAFETY: if the estimate is this far (m) from the path, stop.
 
@@ -788,7 +788,9 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time, use_gps=False):
                 # map + wheels + gyro alone drove the blind parts (intersection, roundabout) very well.
                 j_lo, j_hi = path.index_at(path.s[idx] - 0.2), path.index_at(path.s[idx] + 0.3)
                 camera_road = np.max(np.abs(path.curv[j_lo:j_hi + 1])) < CAM_MAX_CURV
-                if locked and not in_no_camera_zone and camera_road:
+                # 2.7.9: with the LiDAR position the camera is NOT used for steering. Its guess of the lane
+                # center (yellow line + half a lane) was 5 cm off on the top street and yanked the car left.
+                if locked and not in_no_camera_zone and camera_road and gps is None:
                     camera_steer = float(-lf.STEER_SIGN * KP_CAM * lane_error)
                     # Where does the camera say the lane is, compared with where we think we are?
                     # Look at the point CAM_AHEAD in front of the car (that is what the camera sees).
