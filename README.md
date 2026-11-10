@@ -134,3 +134,24 @@ decisions) plus **maneuvers** (short moves done with wheel distance and gyro hea
 - [ ] 10. Hybrid test: some cars with LiDAR, some without
 - [ ] 11. Experiments: which setup gives the best traffic flow; adaptive timing (wait time, occupancy)
 - [ ] 12. External cameras to detect cars without V2I
+
+
+## Using ANOTHER car (quick procedure)
+
+1. Laptop with internet: `git clone https://github.com/seeoi/Adaptive-Traffic-Control-QCar.git` (or `git pull`).
+2. Turn the car on, read its IP on the car's screen, connect the laptop to the car Wi-Fi (`Quanser_UVS_209`).
+3. Open PowerShell in the repo folder and tell `map.ps1` the car's IP (only for this window):
+   `$env:QCAR_IP = "192.168.2.183"`   (password for every ssh/scp prompt: `nvidia`)
+4. If the car has no profile yet (the program says "has no measured profile"): measure it once and send the output:
+   - `powershell -ExecutionPolicy Bypass -File .\map.ps1 --odotest`   (push the car exactly 1.00 m by hand)
+   - `powershell -ExecutionPolicy Bypass -File .\map.ps1 --circletest`   (needs ~2 x 2 m of free floor)
+   Car 6 (`qcar-67815`) and car 7 (`qcar-67807`) already have profiles.
+5. LiDAR calibration (once per car, again if furniture moves): put the car at x=0, y=2.0, facing -90 deg (central
+   street, lane going DOWN toward the crossing, about 16 cm past the upper corner marks), nobody near it, then
+   `powershell -ExecutionPolicy Bypass -File .\map.ps1 --gpscal`
+6. Check it (motor off): `powershell -ExecutionPolicy Bypass -File .\map.ps1 --whereami` - put the car on node 22 and
+   node 9: "cm away" should be under ~8 cm.
+7. Drive: car on node 22 (left street, lane going down), then
+   `powershell -ExecutionPolicy Bypass -File .\map.ps1 --route 22,9,13,19,17,20,22 --vmax 0.2 --time 90 --gps`
+   and, when that is good, `powershell -ExecutionPolicy Bypass -File .\map.ps1 --random 22 --vmax 0.2 --gps`
+   (Ctrl+C to stop).

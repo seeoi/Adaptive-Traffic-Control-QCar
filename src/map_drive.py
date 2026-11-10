@@ -50,7 +50,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.8.2"
+VERSION = "2.8.3"
 
 # =============================================================================
 # SETTINGS
@@ -130,7 +130,7 @@ GPS_GAIN = 0.15        # Each LiDAR position moves our estimate this part of the
 GPS_GAIN_HEADING = 0.10
 GPS_OFFSET = 0.16      # The LiDAR position is this far (m) IN FRONT of the rear axle (our "car position").
                        # Measured on car 7 (2.7.2): without it the car cut every curve to the inside by 5-8 cm.
-GPS_SHIFT_Y = 0.08     # Added to every LiDAR y (m). 2.7.6: photos showed the car ~8-10 cm too far NORTH (up on the
+GPS_SHIFT_Y = 0.0      # Added to every LiDAR y (m). Per car (see CAR_PROFILES; car 7 = 0.08). 2.7.6: photos showed the car ~8-10 cm too far NORTH (up on the
                        # map) on every east-west road (top street half out, on the yellow before the crossing and in
                        # the S-curve) while the log said 1-2 cm; --whereami at node 9 also read y 8 cm too low.
                        # Most likely the car was a few cm off along the road at --gpscal. Set 0 after a new --gpscal.
@@ -219,7 +219,8 @@ CAR_PROFILES = {
     "qcar-67815": dict(name="car 6", TACH_SCALE=1.0, STEER_SCALE=0.70, STEER_BIAS=0.054,
                        MIN_RADIUS_LEFT=0.66, MIN_RADIUS_RIGHT=0.92),   # left 0.60 m, right 0.84 m at full lock
     "qcar-67807": dict(name="car 7", TACH_SCALE=1.0, STEER_SCALE=0.707, STEER_BIAS=0.032,
-                       MIN_RADIUS_LEFT=0.69, MIN_RADIUS_RIGHT=0.84),   # left 0.63 m, right 0.77 m at full lock
+                       MIN_RADIUS_LEFT=0.69, MIN_RADIUS_RIGHT=0.84,    # left 0.63 m, right 0.77 m at full lock
+                       GPS_SHIFT_Y=0.08),                              # its --gpscal of 2026-11-09 was ~8 cm off
 }
 
 

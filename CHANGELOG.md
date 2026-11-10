@@ -9,6 +9,10 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.8.3 - 2026-11-09
+- Ready for other cars: `GPS_SHIFT_Y` is now per car (car 7 = 0.08, others 0); `map.ps1` takes the car IP from
+  `$env:QCAR_IP` (default car 7); README "Using ANOTHER car" step by step.
+
 ## 2.8.2 - 2026-11-09
 - First `--random` runs: 180 s, 35.8 m of a 52 m random route (crossing left/straight, roundabout, bottom and right
   streets), max 4 cm off the path; it stopped only because `--time 180` ran out.

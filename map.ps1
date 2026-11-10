@@ -14,7 +14,8 @@
 #   Car 6 (qcar-67815) = 192.168.2.183
 #   Car 7              = 192.168.2.45    (current setting)
 #   Car 5 (qcar-67798) = 192.168.2.217
-$CarIP = "192.168.2.45"
+# Another car without editing this file: in PowerShell first type   $env:QCAR_IP = "192.168.2.183"
+$CarIP = if ($env:QCAR_IP) { $env:QCAR_IP } else { "192.168.2.45" }
 
 # Step 1: copy both files to the car in one go (the password is: nvidia).
 scp src\lane_follow.py src\map_drive.py nvidia@${CarIP}:~/
