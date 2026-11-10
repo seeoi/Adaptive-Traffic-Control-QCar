@@ -50,7 +50,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.8.1"
+VERSION = "2.8.2"
 
 # =============================================================================
 # SETTINGS
@@ -284,6 +284,7 @@ RANDOM_AVOID = {(21, 16, 18), (19, 17, 15)}
 # Nodes --random never drives to. 10 = the bottom-left diagonal road next to the parking spaces (2.8.1: Sebastian
 # does not want the car there). The big parking lot has no nodes, so the car never goes into it anyway.
 RANDOM_NO_NODES = {10}
+RANDOM_TIME = 3600     # --random without --time drives this long (s): in practice until you stop it.
 
 
 def random_route(roadmap, start, length_m, seed):
@@ -968,7 +969,8 @@ if __name__ == "__main__":
     parser.add_argument("--whereami", action="store_true", help="motor OFF: print the LiDAR position for 30 s")
     parser.add_argument("--nocam", action="store_true", help="do not use the camera (map only)")
     parser.add_argument("--vmax", type=float, default=None, help=f"top speed in m/s (default {V_MAX})")
-    parser.add_argument("--time", type=int, default=RUN_TIME, help=f"stop after this many seconds ({RUN_TIME})")
+    parser.add_argument("--time", type=int, default=None,
+                        help=f"stop after this many seconds ({RUN_TIME}; with --random: 1 hour = until you stop it)")
     args = parser.parse_args()
     print(f"map_drive.py version {VERSION}")
     apply_car_profile()
@@ -989,7 +991,11 @@ if __name__ == "__main__":
     elif args.whereami:
         where_am_i()
     else:
+        if args.time is None:
+            # --random with no --time: keep driving (1 hour) until Ctrl+C or the laptop link drops.
+            args.time = RANDOM_TIME if args.random is not None else RUN_TIME
         if args.random is not None:
+            print(f"Driving at random for up to {args.time // 60} min. Press Ctrl+C to stop.")
             seed = args.seed if args.seed is not None else int(time.time()) % 10000
             # Enough road for the whole --time at top speed (plus a bit).
             route = random_route(SDCSRoadMap(leftHandTraffic=False), args.random, V_MAX * args.time * 1.2, seed)

@@ -9,6 +9,11 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.8.2 - 2026-11-09
+- First `--random` runs: 180 s, 35.8 m of a 52 m random route (crossing left/straight, roundabout, bottom and right
+  streets), max 4 cm off the path; it stopped only because `--time 180` ran out.
+- `--random` without `--time` now drives for up to 1 hour (`RANDOM_TIME`), i.e. until Ctrl+C (or the link check).
+
 ## 2.8.1 - 2026-11-09
 - `--random` never goes to node 10 (`RANDOM_NO_NODES`): the bottom-left diagonal road next to the parking spaces.
   The big parking lot has no map nodes, so no route goes into it.
