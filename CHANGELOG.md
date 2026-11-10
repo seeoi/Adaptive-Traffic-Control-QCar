@@ -9,6 +9,12 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2026-11-09 - FASTER + NEW ROUTES WORK (2.7.7, car 7, --gps)
+- Loop `22,9,13,19,17,20,22` at `--vmax 0.25` (57 s) and `--vmax 0.30` (47 s): max 4 cm off the path.
+- Route A `22,9,7,14,20,22` (STRAIGHT at the crossing, right street, roundabout): 14.4 m, 72 s at 0.2, max 6 cm.
+- Route B `22,9,0,2,4,14,20,22` (RIGHT at the crossing, bottom street, right street, roundabout): 17.4 m, 88 s at 0.2,
+  max 5 cm. First time on these streets with the LiDAR - no tuning needed. "Las 3 pruebas funcionaron a la perfección".
+
 ## 2026-11-09 - MILESTONE: 3 LAPS IN A ROW WITH THE LIDAR POSITION (2.7.7, car 7)
 - `--route 22,9,13,19,17,20,22 --laps 3 --vmax 0.2 --time 240 --gps`: 40.6 m in 206 s, left turn at the crossing,
   roundabout and back, three times, and it stopped at the start ("dio las 3 vueltas a la perfección"). Log: never more
