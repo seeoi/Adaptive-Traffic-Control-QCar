@@ -146,10 +146,10 @@ decisions) plus **maneuvers** (short moves done with wheel distance and gyro hea
    - `powershell -ExecutionPolicy Bypass -File .\map.ps1 --odotest`   (push the car exactly 1.00 m by hand)
    - `powershell -ExecutionPolicy Bypass -File .\map.ps1 --circletest`   (needs ~2 x 2 m of free floor)
    Car 6 (`qcar-67815`) and car 7 (`qcar-67807`) already have profiles.
-5. LiDAR calibration (once per car, again if furniture moves): put the car at x=0, y=2.0, facing -90 deg (central
+5. LiDAR calibration (picture: `docs/mapa1_calibrar.png`; once per car, again if furniture moves): put the car at x=0, y=2.0, facing -90 deg (central
    street, lane going DOWN toward the crossing, about 16 cm past the upper corner marks), nobody near it, then
    `powershell -ExecutionPolicy Bypass -File .\map.ps1 --gpscal`
-6. Check it (motor off): `powershell -ExecutionPolicy Bypass -File .\map.ps1 --whereami` - put the car on node 22 and
+6. Check it (picture of nodes 22 and 9: `docs/mapa2_salida.png`; motor off): `powershell -ExecutionPolicy Bypass -File .\map.ps1 --whereami` - put the car on node 22 and
    node 9: "cm away" should be under ~8 cm.
 7. Drive: car on node 22 (left street, lane going down), then
    `powershell -ExecutionPolicy Bypass -File .\map.ps1 --route 22,9,13,19,17,20,22 --vmax 0.2 --time 90 --gps`
