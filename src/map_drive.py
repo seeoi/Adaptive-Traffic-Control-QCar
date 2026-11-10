@@ -50,7 +50,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.8.0"
+VERSION = "2.8.1"
 
 # =============================================================================
 # SETTINGS
@@ -281,6 +281,9 @@ def print_graph(roadmap):
 # 21->16->18 and 19->17->15 are one long tight RIGHT turn that car 7 cannot make (it ends in the other lane);
 # in those places the car goes around the roundabout instead.
 RANDOM_AVOID = {(21, 16, 18), (19, 17, 15)}
+# Nodes --random never drives to. 10 = the bottom-left diagonal road next to the parking spaces (2.8.1: Sebastian
+# does not want the car there). The big parking lot has no nodes, so the car never goes into it anyway.
+RANDOM_NO_NODES = {10}
 
 
 def random_route(roadmap, start, length_m, seed):
@@ -294,6 +297,7 @@ def random_route(roadmap, start, length_m, seed):
     while total < length_m:
         here = route[-1]
         options = [nodes.index(e.toNode) for e in nodes[here].outEdges]
+        options = [o for o in options if o not in RANDOM_NO_NODES]
         if len(route) >= 2:
             options = [o for o in options if (route[-2], here, o) not in RANDOM_AVOID]
         if not options:

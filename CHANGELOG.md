@@ -9,6 +9,10 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.8.1 - 2026-11-09
+- `--random` never goes to node 10 (`RANDOM_NO_NODES`): the bottom-left diagonal road next to the parking spaces.
+  The big parking lot has no map nodes, so no route goes into it.
+
 ## 2.8.0 - 2026-11-09
 - New `--random START`: the car drives everywhere on its own. From node START (22 or 23) it picks one of the roads
   leaving each node at random (LEFT / STRAIGHT / RIGHT, roundabout exits), building a route long enough for `--time`
