@@ -50,7 +50,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.7.9"
+VERSION = "2.8.0"
 
 # =============================================================================
 # SETTINGS
@@ -275,6 +275,37 @@ def print_graph(roadmap):
             except Exception:
                 exits.append("?")
         print(f"{i:2d}: ({x:+.2f}, {y:+.2f}) {np.degrees(h):+5.0f} deg  ->  {', '.join(exits) or 'no data'}")
+
+
+# Turns the car must NOT take in --random mode: (previous node, this node, next node).
+# 21->16->18 and 19->17->15 are one long tight RIGHT turn that car 7 cannot make (it ends in the other lane);
+# in those places the car goes around the roundabout instead.
+RANDOM_AVOID = {(21, 16, 18), (19, 17, 15)}
+
+
+def random_route(roadmap, start, length_m, seed):
+    """Make a random route from `start`: at every node pick one of the roads that leave it, at random.
+
+    Stops when the straight-line distances add up to `length_m` (the real path is a bit longer).
+    """
+    rng = np.random.default_rng(seed)
+    nodes = list(roadmap.nodes)
+    route, total = [start], 0.0
+    while total < length_m:
+        here = route[-1]
+        options = [nodes.index(e.toNode) for e in nodes[here].outEdges]
+        if len(route) >= 2:
+            options = [o for o in options if (route[-2], here, o) not in RANDOM_AVOID]
+        if not options:
+            break
+        nxt = int(rng.choice(options))
+        a, b = node_pose(roadmap, here), node_pose(roadmap, nxt)
+        total += float(np.hypot(b[0] - a[0], b[1] - a[1]))
+        route.append(nxt)
+    print(f"RANDOM route (seed {seed}): " + " -> ".join(
+        f"{n}" if i == 0 else f"{n} ({turn_name(node_pose(roadmap, route[i - 1])[2], node_pose(roadmap, n)[2])})"
+        for i, n in enumerate(route)))
+    return route
 
 
 def apply_lane_trims(points):
@@ -916,6 +947,9 @@ def drive(route, laps, dry_run, use_lidar, use_camera, run_time, use_gps=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="QCar 2: drive a route on the road map")
+    parser.add_argument("--random", type=int, default=None, metavar="START",
+                        help="drive everywhere: start at node START (22 or 23) and pick each turn at random")
+    parser.add_argument("--seed", type=int, default=None, help="with --random: repeat the same random route")
     parser.add_argument("--route", default="10,4,20,10", help="map nodes, comma separated (first = start)")
     parser.add_argument("--laps", type=int, default=1, help="laps for a loop route (first node = last node)")
     parser.add_argument("--graph", action="store_true", help="print the nodes and where each can go, then exit")
@@ -951,7 +985,13 @@ if __name__ == "__main__":
     elif args.whereami:
         where_am_i()
     else:
-        route = [int(n) for n in args.route.split(",")]
+        if args.random is not None:
+            seed = args.seed if args.seed is not None else int(time.time()) % 10000
+            # Enough road for the whole --time at top speed (plus a bit).
+            route = random_route(SDCSRoadMap(leftHandTraffic=False), args.random, V_MAX * args.time * 1.2, seed)
+            args.laps = 1
+        else:
+            route = [int(n) for n in args.route.split(",")]
         if args.gps and args.lidar:
             print("--gps and --lidar both need the LiDAR: using --gps only.")
         drive(route, args.laps, args.dry, args.lidar and not args.gps, USE_CAMERA and not args.nocam,

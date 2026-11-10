@@ -9,6 +9,14 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.8.0 - 2026-11-09
+- New `--random START`: the car drives everywhere on its own. From node START (22 or 23) it picks one of the roads
+  leaving each node at random (LEFT / STRAIGHT / RIGHT, roundabout exits), building a route long enough for `--time`
+  at `--vmax`, and prints it. `--seed N` repeats the same random route. `RANDOM_AVOID` skips the two long tight RIGHT
+  turns car 7 cannot make (21->16->18 and 19->17->15): there it goes around the roundabout instead.
+- Route C (reverse loop) left as it is: car 7 cannot turn right tight enough for 21->16->18 (steering at the -0.60 limit,
+  ~0.77 m radius vs 0.68 m on the map), so it ends partly in the other lane there.
+
 ## 2.7.9 - 2026-11-09
 - Route C with 2.7.8 (2 runs): exit of the roundabout better (max 7 cm wide, was 13), but (1) on the top street the car
   rode on the yellow line and made a sudden swerve LEFT just before the roundabout, (2) still a bit wide at the exit.
