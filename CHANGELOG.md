@@ -9,6 +9,15 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.7.8 - 2026-11-09
+- First routes in the OTHER direction (car 7, --gps). Route C `23,21,16,18,11,12,8,23` (reverse loop, RIGHT at the
+  crossing): works, but leaving the roundabout toward the central street the car invaded the other lane on the left
+  (photos: over the yellow triangle tip). Log: top street east -> roundabout -> exit is one ~150 deg RIGHT turn of
+  radius ~0.68 m; steering stuck at -0.60 for ~6 s and the car drifted up to 13 cm outside. Car 7 cannot turn right
+  tighter than ~0.77 m (the servo stops there; left goes tighter). Corner rounding cannot fix a near U-turn.
+- Fix: `LANE_TRIMS` racing line - 6 cm LEFT just before the turn (top street, heading east only), so the car starts
+  turning earlier. Simulated: exit 17 -> 10 cm wide, entry 4 cm toward the yellow line.
+
 ## 2026-11-09 - FASTER + NEW ROUTES WORK (2.7.7, car 7, --gps)
 - Loop `22,9,13,19,17,20,22` at `--vmax 0.25` (57 s) and `--vmax 0.30` (47 s): max 4 cm off the path.
 - Route A `22,9,7,14,20,22` (STRAIGHT at the crossing, right street, roundabout): 14.4 m, 72 s at 0.2, max 6 cm.

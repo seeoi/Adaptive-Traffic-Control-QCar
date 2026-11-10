@@ -50,7 +50,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.7.7"
+VERSION = "2.7.8"
 
 # =============================================================================
 # SETTINGS
@@ -113,6 +113,11 @@ LANE_TRIMS = [
     # 2.7.7: roundabout, south side, where the right street (node 14) joins: the car went a little to the right,
     # over the tip of that street's yellow triangle. Move the path 3 cm left (toward the island) there only.
     (1.65, 3.18, 0.35, 10, 0.03),
+    # 2.7.8: top street going EAST into the roundabout and straight out to the central street (route 23,21,16,18,...):
+    # a ~150 deg RIGHT turn of radius 0.68 m, but car 7 turns right no tighter than ~0.77 m (steering stuck at -0.60
+    # for 6 s, exit 13 cm wide into the other lane). Like a racing line: enter a bit wide (6 cm LEFT just before the
+    # turn) so the car starts turning earlier and exits less wide. Simulation: exit 17 -> 10 cm, entry +4 cm.
+    (0.25, 4.23, 0.50, -10, 0.06),
 ]
 OFF_PATH_STOP = 0.40   # SAFETY: if the estimate is this far (m) from the path, stop.
 
