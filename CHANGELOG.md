@@ -9,6 +9,11 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.8.4 - 2026-11-11
+- New car profile `qcar-67799` (IP 192.168.2.168, new laptop): --odotest 0.99 m for 1.00 m (TACH_SCALE 1.0);
+  --circletest full lock 0.5: left 0.63 m, right 0.81 m -> STEER_SCALE 0.692, STEER_BIAS 0.040,
+  MIN_RADIUS_LEFT 0.69, MIN_RADIUS_RIGHT 0.88. GPS_SHIFT_Y 0 (needs its own --gpscal).
+
 ## 2.8.3 - 2026-11-09
 - Ready for other cars: `GPS_SHIFT_Y` is now per car (car 7 = 0.08, others 0); `map.ps1` takes the car IP from
   `$env:QCAR_IP` (default car 7); README "Using ANOTHER car" step by step.
