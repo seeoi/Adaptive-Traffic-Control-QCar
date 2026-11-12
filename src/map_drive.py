@@ -50,7 +50,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.8.4"
+VERSION = "2.8.5"
 
 # =============================================================================
 # SETTINGS
@@ -221,7 +221,7 @@ CAR_PROFILES = {
     "qcar-67807": dict(name="car 7", TACH_SCALE=1.0, STEER_SCALE=0.707, STEER_BIAS=0.032,
                        MIN_RADIUS_LEFT=0.69, MIN_RADIUS_RIGHT=0.84,    # left 0.63 m, right 0.77 m at full lock
                        GPS_SHIFT_Y=0.08),                              # its --gpscal of 2026-11-09 was ~8 cm off
-    "qcar-67799": dict(name="car 67799", TACH_SCALE=1.0, STEER_SCALE=0.692, STEER_BIAS=0.040,
+    "qcar-67799": dict(name="car 3", TACH_SCALE=1.0, STEER_SCALE=0.692, STEER_BIAS=0.040,
                        MIN_RADIUS_LEFT=0.69, MIN_RADIUS_RIGHT=0.88),   # left 0.63 m, right 0.81 m at full lock (2026-11-11)
 }
 

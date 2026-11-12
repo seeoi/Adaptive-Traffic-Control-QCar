@@ -9,6 +9,9 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.8.5 - 2026-11-11
+- `qcar-67799` is car 3 (name in its profile).
+
 ## 2.8.4 - 2026-11-11
 - New car profile `qcar-67799` (IP 192.168.2.168, new laptop): --odotest 0.99 m for 1.00 m (TACH_SCALE 1.0);
   --circletest full lock 0.5: left 0.63 m, right 0.81 m -> STEER_SCALE 0.692, STEER_BIAS 0.040,
