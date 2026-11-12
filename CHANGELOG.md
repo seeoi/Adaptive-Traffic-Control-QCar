@@ -9,6 +9,12 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.8.6 - 2026-11-11
+- New car profile `qcar-67812` (labelled car 6, IP 192.168.2.125). --odotest: wheel sensor said 1.00 m when the car had
+  gone 1.055 m -> TACH_SCALE 1.055. --circletest (sensor radii x 1.055): left 0.60 m, right 0.70 m at full lock
+  -> STEER_SCALE 0.755, STEER_BIAS 0.025, MIN_RADIUS_LEFT 0.66, MIN_RADIUS_RIGHT 0.77. Turns tighter than
+  every other car (also to the right). The old "car 6" profile (`qcar-67815`, was .183) is renamed "car 6 old".
+
 ## 2.8.5 - 2026-11-11
 - `qcar-67799` is car 3 (name in its profile).
 
