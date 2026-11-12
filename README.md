@@ -155,3 +155,16 @@ decisions) plus **maneuvers** (short moves done with wheel distance and gyro hea
    `powershell -ExecutionPolicy Bypass -File .\map.ps1 --route 22,9,13,19,17,20,22 --vmax 0.2 --time 90 --gps`
    and, when that is good, `powershell -ExecutionPolicy Bypass -File .\map.ps1 --random 22 --vmax 0.2 --gps`
    (Ctrl+C to stop).
+
+### `--gpscal` says "Unable to download model .../QCarScanMatching/qcar2CaptureScan..."
+That car is missing Quanser's LiDAR-position files (seen on car 9, 2026-11-11). Copy them from a car that has them
+(car 3 = 192.168.2.168 keeps them in `~/Documents/Quanser/libraries/resources/applications/QCarScanMatching`) to the
+folder the error names (here `/home/resources/applications/`):
+
+    scp -r nvidia@192.168.2.168:~/Documents/Quanser/libraries/resources/applications/QCarScanMatching .
+    scp -r QCarScanMatching nvidia@<car IP>:~/
+    ssh nvidia@<car IP>
+    sudo mkdir -p /home/resources/applications
+    sudo cp -r ~/QCarScanMatching /home/resources/applications/
+    sudo chmod -R a+rX /home/resources
+    exit
