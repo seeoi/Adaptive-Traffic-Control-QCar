@@ -9,6 +9,9 @@ Version numbers: `MAJOR.MINOR.PATCH`
 - MINOR (1.1.0): new feature, still works the same way
 - MAJOR (2.0.0): big change in how the car drives
 
+## 2.8.7 - 2026-11-11
+- Names fixed: `qcar-67812` (IP .125, measured today) is car 9; `qcar-67815` is car 6 again.
+
 ## 2.8.6 - 2026-11-11
 - New car profile `qcar-67812` (labelled car 6, IP 192.168.2.125). --odotest: wheel sensor said 1.00 m when the car had
   gone 1.055 m -> TACH_SCALE 1.055. --circletest (sensor radii x 1.055): left 0.60 m, right 0.70 m at full lock

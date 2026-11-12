@@ -50,7 +50,7 @@ from hal.products.mats import SDCSRoadMap
 # We reuse the camera lane detector and the LiDAR watcher from lane_follow.py (same folder).
 import lane_follow as lf
 
-VERSION = "2.8.6"
+VERSION = "2.8.7"
 
 # =============================================================================
 # SETTINGS
@@ -216,12 +216,12 @@ class LinkWatch:
 # (the name on its screen / prompt, e.g. qcar-67815). A car not in this list uses the default numbers above;
 # measure it with --odotest and --circletest and add it here.
 CAR_PROFILES = {
-    "qcar-67815": dict(name="car 6 old (.183)", TACH_SCALE=1.0, STEER_SCALE=0.70, STEER_BIAS=0.054,
+    "qcar-67815": dict(name="car 6", TACH_SCALE=1.0, STEER_SCALE=0.70, STEER_BIAS=0.054,
                        MIN_RADIUS_LEFT=0.66, MIN_RADIUS_RIGHT=0.92),   # left 0.60 m, right 0.84 m at full lock
     "qcar-67807": dict(name="car 7", TACH_SCALE=1.0, STEER_SCALE=0.707, STEER_BIAS=0.032,
                        MIN_RADIUS_LEFT=0.69, MIN_RADIUS_RIGHT=0.84,    # left 0.63 m, right 0.77 m at full lock
                        GPS_SHIFT_Y=0.08),                              # its --gpscal of 2026-11-09 was ~8 cm off
-    "qcar-67812": dict(name="car 6 (.125)", TACH_SCALE=1.055, STEER_SCALE=0.755, STEER_BIAS=0.025,
+    "qcar-67812": dict(name="car 9", TACH_SCALE=1.055, STEER_SCALE=0.755, STEER_BIAS=0.025,
                        MIN_RADIUS_LEFT=0.66, MIN_RADIUS_RIGHT=0.77),   # left 0.60 m, right 0.70 m at full lock (2026-11-11)
     "qcar-67799": dict(name="car 3", TACH_SCALE=1.0, STEER_SCALE=0.692, STEER_BIAS=0.040,
                        MIN_RADIUS_LEFT=0.69, MIN_RADIUS_RIGHT=0.88),   # left 0.63 m, right 0.81 m at full lock (2026-11-11)
